@@ -383,7 +383,8 @@ function customConfig (): CustomConfig {
       limit: CONFIG.SIGNUP.LIMIT,
       requiresApproval: CONFIG.SIGNUP.REQUIRES_APPROVAL,
       requiresEmailVerification: CONFIG.SIGNUP.REQUIRES_EMAIL_VERIFICATION,
-      minimumAge: CONFIG.SIGNUP.MINIMUM_AGE
+      minimumAge: CONFIG.SIGNUP.MINIMUM_AGE,
+      emailOnly: CONFIG.SIGNUP.EMAIL_ONLY
     },
     admin: {
       email: CONFIG.ADMIN.EMAIL

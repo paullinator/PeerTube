@@ -52,6 +52,7 @@ export const customConfigUpdateValidator = [
   body('signup.requiresEmailVerification').isBoolean(),
   body('signup.requiresApproval').isBoolean(),
   body('signup.minimumAge').isInt(),
+  body('signup.emailOnly').optional().isBoolean(),
 
   body('admin.email').isEmail(),
   body('contactForm.enabled').isBoolean(),

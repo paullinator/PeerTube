@@ -67,6 +67,7 @@ type Form = {
     requiresApproval: FormControl<boolean>
     requiresEmailVerification: FormControl<boolean>
     minimumAge: FormControl<number>
+    emailOnly: FormControl<boolean>
   }>
 
   import: FormGroup<{
@@ -332,7 +333,8 @@ export class AdminConfigGeneralComponent implements OnInit, OnDestroy, CanCompon
         limit: SIGNUP_LIMIT_VALIDATOR,
         requiresApproval: null,
         requiresEmailVerification: null,
-        minimumAge: SIGNUP_MINIMUM_AGE_VALIDATOR
+        minimumAge: SIGNUP_MINIMUM_AGE_VALIDATOR,
+        emailOnly: null
       },
       import: {
         videos: {
