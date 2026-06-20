@@ -940,6 +940,12 @@ export let JWT_TOKEN_USER_EXPORT_FILE_LIFETIME: `${number} minutes` | `${number}
 
 export const EMAIL_VERIFY_LIFETIME = 60000 * 60 // 60 minutes
 
+// Passwordless email login (magic link + OTP)
+export const EMAIL_LOGIN_LIFETIME = 60000 * 15 // 15 minutes
+export const EMAIL_LOGIN_OTP_LENGTH = 6
+// Email login establishes a long-lived (~1 month) session
+export const EMAIL_LOGIN_REFRESH_TOKEN_LIFETIME = 1000 * 3600 * 24 * 30 // 30 days
+
 export const NSFW_POLICY_TYPES: { [id: string]: NSFWPolicyType } = {
   DO_NOT_LIST: 'do_not_list',
   WARN: 'warn',

@@ -22,12 +22,49 @@ import { generateAndSaveActorKeys } from './activitypub/actors/index.js'
 import { getLocalAccountActivityPubUrl } from './activitypub/url.js'
 import { Emailer } from './emailer.js'
 import { LiveQuotaStore } from './live/live-quota-store.js'
-import { buildActorInstance, findAvailableLocalActorName } from './local-actor.js'
+import { buildActorInstance, findAvailableLocalActorName, loadReservedActorName } from './local-actor.js'
 import { Redis } from './redis.js'
 import { createLocalVideoChannelWithoutKeys } from './video-channel.js'
 import { createWatchLaterPlaylist } from './video-playlist.js'
 
 type ChannelNames = { name: string, displayName: string }
+
+// Sanitize an arbitrary string into a valid PeerTube username fragment.
+// Valid usernames match ^[a-z0-9_]+([a-z0-9_.-]+[a-z0-9_]+)?$
+function sanitizeUsernameFragment (value: string) {
+  return (value || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9_.-]/g, '_') // disallowed chars -> underscore
+    .replace(/^[^a-z0-9_]+/, '') // must start with [a-z0-9_]
+    .replace(/[^a-z0-9_]+$/, '') // must end with [a-z0-9_]
+}
+
+// Derive an available local username from an email for email-only signup:
+// 1. the local part (before @), else
+// 2. the full email with @ replaced by _, else
+// 3. a numeric suffix is appended (-N) to make it unique.
+export async function deriveUsernameFromEmail (email: string, transaction?: Transaction) {
+  const localPart = sanitizeUsernameFragment(email.split('@')[0])
+
+  const candidates = [ localPart ]
+
+  // Fallback that encodes the whole email so two "john@a" / "john@b" don't fight over "john"
+  const fullEmail = sanitizeUsernameFragment(email.replace('@', '_'))
+  if (fullEmail && fullEmail !== localPart) candidates.push(fullEmail)
+
+  for (const candidate of candidates) {
+    if (!candidate) continue
+    if (candidate.length < 1 || candidate.length > 50) continue
+
+    const reserved = await loadReservedActorName(candidate, transaction)
+    if (!reserved) return candidate
+  }
+
+  // Everything taken/invalid: fall back to an available variant of the local part (or a generic base)
+  const base = localPart && localPart.length >= 1 ? localPart : 'user'
+
+  return findAvailableLocalActorName(base, transaction)
+}
 
 export function buildUser (options: {
   username: string

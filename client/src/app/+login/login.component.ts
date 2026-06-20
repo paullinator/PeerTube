@@ -89,6 +89,10 @@ export class LoginComponent extends FormReactive implements OnInit, AfterViewIni
     return this.serverConfig.signup.allowed === true
   }
 
+  get emailOnlyEnabled () {
+    return this.serverConfig.signup.emailOnly === true
+  }
+
   get instanceName () {
     return this.serverConfig.instance.name
   }

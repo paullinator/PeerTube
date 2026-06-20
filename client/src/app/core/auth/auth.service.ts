@@ -31,6 +31,7 @@ export class AuthService {
 
   private static BASE_CLIENT_URL = environment.apiUrl + '/api/v1/oauth-clients/local'
   private static BASE_TOKEN_URL = environment.apiUrl + '/api/v1/users/token'
+  private static BASE_EMAIL_LOGIN_URL = environment.apiUrl + '/api/v1/users/email-login'
   private static BASE_REVOKE_TOKEN_URL = environment.apiUrl + '/api/v1/users/revoke-token'
   private static BASE_USER_INFORMATION_URL = environment.apiUrl + '/api/v1/users/me'
   private static LS_OAUTH_CLIENT_KEYS = {
@@ -175,6 +176,28 @@ Ensure you have correctly configured PeerTube (config/ directory), in particular
       .pipe(
         map(res => Object.assign(res, { username })),
         mergeMap(res => this.mergeUserInformation(res)),
+        map(res => this.handleLogin(res)),
+        catchError(res => this.restExtractor.handleError(res))
+      )
+  }
+
+  // Passwordless email login: ask the server to send a magic link + OTP to the email
+  emailLoginRequest (email: string) {
+    return this.http.post<void>(AuthService.BASE_EMAIL_LOGIN_URL + '/request', { email })
+      .pipe(catchError(res => this.restExtractor.handleError(res)))
+  }
+
+  // Complete passwordless email login with either the magic-link verification string or the OTP
+  emailLoginComplete (options: { email: string, verificationString?: string, otp?: string }) {
+    const { email, verificationString, otp } = options
+
+    const body: { email: string, verificationString?: string, otp?: string } = { email }
+    if (verificationString) body.verificationString = verificationString
+    if (otp) body.otp = otp
+
+    return this.http.post<UserLogin>(AuthService.BASE_EMAIL_LOGIN_URL + '/complete', body)
+      .pipe(
+        mergeMap(res => this.mergeUserInformation(res as UserLoginWithUsername)),
         map(res => this.handleLogin(res)),
         catchError(res => this.restExtractor.handleError(res))
       )

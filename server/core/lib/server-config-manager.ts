@@ -455,7 +455,8 @@ class ServerConfigManager {
       allowedForCurrentIP,
       minimumAge: CONFIG.SIGNUP.MINIMUM_AGE,
       requiresApproval: CONFIG.SIGNUP.REQUIRES_APPROVAL,
-      requiresEmailVerification: CONFIG.SIGNUP.REQUIRES_EMAIL_VERIFICATION
+      requiresEmailVerification: CONFIG.SIGNUP.REQUIRES_EMAIL_VERIFICATION,
+      emailOnly: CONFIG.SIGNUP.EMAIL_ONLY
     } satisfies ServerConfig['signup']
 
     const htmlConfig = await this.getHTMLServerConfig()

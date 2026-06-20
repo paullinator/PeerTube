@@ -1,0 +1,61 @@
+<div class="margin-content">
+  <h1 class="title-page" i18n>Log in to {{ instanceName }}</h1>
+
+  @if (error) {
+    <my-alert type="danger">{{ error }}</my-alert>
+  }
+
+  @if (step === 'completing') {
+    <my-alert type="primary" i18n>Logging you in…</my-alert>
+  }
+
+  @if (step === 'request') {
+    <p i18n>Enter your email address and we'll send you a link (and a code) to log in. No password needed.</p>
+
+    <form (ngSubmit)="request()">
+      <div class="form-group">
+        <label for="email" i18n>Email</label>
+        <input
+          type="email" id="email" name="email" class="form-control"
+          [(ngModel)]="email" required autofocus
+          placeholder="you@example.com" i18n-placeholder
+        >
+      </div>
+
+      <input
+        type="submit" class="peertube-button primary-button" i18n-value value="Send me a login link"
+        [disabled]="!email || loading"
+      >
+    </form>
+
+    <div class="mt-3">
+      <a routerLink="/login" class="link-primary" i18n>Log in with a password instead</a>
+    </div>
+  }
+
+  @if (step === 'sent') {
+    <my-alert type="success" i18n>
+      We sent a login link to <strong>{{ email }}</strong>. Click the link in that email to log in, or enter the code below.
+    </my-alert>
+
+    <form (ngSubmit)="submitOtp()">
+      <div class="form-group">
+        <label for="otp" i18n>Login code</label>
+        <input
+          type="text" id="otp" name="otp" class="form-control"
+          [(ngModel)]="otp" autocomplete="one-time-code" inputmode="numeric"
+          autofocus placeholder="123456" i18n-placeholder
+        >
+      </div>
+
+      <input
+        type="submit" class="peertube-button primary-button" i18n-value value="Log in"
+        [disabled]="!otp || loading"
+      >
+    </form>
+
+    <div class="mt-3">
+      <a (click)="step = 'request'" class="link-primary" i18n>Use a different email</a>
+    </div>
+  }
+</div>

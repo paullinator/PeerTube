@@ -592,6 +592,12 @@ signup:
   requires_approval: true
   requires_email_verification: false
 
+  # Simplified email-only registration: the request-an-account form asks for an email only.
+  # Username and channel name are derived from the email, and the user is logged in via a
+  # magic link / email OTP (they can optionally set a password later in their settings).
+  # Overrides requires_approval when enabled.
+  email_only: false
+
   filters:
     cidr: # You can specify CIDR ranges to whitelist (empty = no filtering) or blacklist
       whitelist: []

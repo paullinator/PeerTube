@@ -39,6 +39,7 @@ import {
   usersResetPasswordValidator
 } from '../../../middlewares/validators/index.js'
 import { UserModel } from '../../../models/user/user.js'
+import { emailLoginRouter } from './email-login.js'
 import { emailVerificationRouter } from './email-verification.js'
 import { meRouter } from './me.js'
 import { myAbusesRouter } from './my-abuses.js'
@@ -64,6 +65,7 @@ const usersRouter = express.Router()
 
 usersRouter.use(apiRateLimiter)
 
+usersRouter.use('/', emailLoginRouter)
 usersRouter.use('/', emailVerificationRouter)
 usersRouter.use('/', userExportsRouter)
 usersRouter.use('/', userImportRouter)

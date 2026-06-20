@@ -124,6 +124,13 @@ export class RegisterComponent implements OnInit {
       sessionStorage.getItem('channel-invite-code') ||
       undefined
 
+    // Email-only signup turns the "request an account" flow into a single email screen (passwordless login)
+    if (this.serverConfig.signup.emailOnly === true) {
+      const queryParams = this.channelInviteCode ? { channelInviteCode: this.channelInviteCode } : {}
+      this.router.navigate([ '/login/email' ], { queryParams })
+      return
+    }
+
     const signupAllowed = this.serverConfig.signup.allowed && this.serverConfig.signup.allowedForCurrentIP
 
     // A valid invite code lets the user sign up even if public sign-up is disabled

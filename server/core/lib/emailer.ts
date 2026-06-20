@@ -113,6 +113,29 @@ export class Emailer {
     return JobQueue.Instance.createJobAsync({ type: 'email', payload: emailPayload })
   }
 
+  addEmailLoginJob (options: {
+    to: string
+    language: string
+    loginUrl: string
+    otp: string
+  }) {
+    const { to, loginUrl, otp, language } = options
+
+    const emailPayload: EmailPayload = {
+      template: 'email-login',
+      to: { email: to, language },
+      subject: t('Log in to {instanceName}', language, { instanceName: CONFIG.INSTANCE.NAME }),
+      locals: {
+        loginUrl,
+        otp,
+
+        hideNotificationPreferencesLink: true
+      }
+    }
+
+    return JobQueue.Instance.createJobAsync({ type: 'email', payload: emailPayload })
+  }
+
   addUserVerifyChangeEmailJob (options: {
     username: string
     to: string

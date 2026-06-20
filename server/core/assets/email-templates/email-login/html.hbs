@@ -1,0 +1,19 @@
+{{#> base title=(t "Log in to your account")}}
+  <p>
+    {{t "A login to your account on {instanceName} has been requested." instanceName=instanceName}}
+  </p>
+
+  <p>
+    {{t "Please click on the link below to log in (the link will expire within 15 minutes):"}}
+  </p>
+
+  {{> button actionUrl=loginUrl actionText=(t "Log me in")}}
+
+  <p>
+    {{t "Alternatively, enter this code on the login page:"}} <strong>{{otp}}</strong>
+  </p>
+
+  <p>
+    {{t "If you are not the person who initiated this request, please ignore this email."}}
+  </p>
+{{/base}}

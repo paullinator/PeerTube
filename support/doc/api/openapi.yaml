@@ -1874,6 +1874,81 @@ paths:
         '204':
           description: successful operation
 
+  /api/v1/users/email-login/request:
+    post:
+      summary: Request a passwordless email login
+      description: >-
+        Only available when `signup.email_only` is enabled. Sends an email containing a magic login link
+        and a short numeric code (OTP). Always answers 204 to avoid leaking whether an account exists.
+        If the email has no account yet, one is created when the login is completed.
+      tags:
+        - Users
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  description: Email to send the login link/code to
+              required:
+                - email
+      responses:
+        '204':
+          description: successful operation
+        '409':
+          description: email-only login is not enabled on this instance
+
+  /api/v1/users/email-login/complete:
+    post:
+      summary: Complete a passwordless email login
+      description: >-
+        Only available when `signup.email_only` is enabled. Verifies the magic-link verification string
+        or the OTP, finds or creates the matching local account, and returns an OAuth token pair with a
+        long-lived (~1 month) refresh token.
+      tags:
+        - Users
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                verificationString:
+                  type: string
+                  description: The verification string from the magic link (provide this or `otp`)
+                otp:
+                  type: string
+                  description: The numeric code sent by email (provide this or `verificationString`)
+              required:
+                - email
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token_type:
+                    type: string
+                    example: Bearer
+                  access_token:
+                    type: string
+                  refresh_token:
+                    type: string
+                  expires_in:
+                    type: integer
+                    minimum: 0
+                  refresh_token_expires_in:
+                    type: integer
+                    minimum: 0
+        '403':
+          description: the login link/code is invalid or has expired
+
   /api/v1/users/{id}/reset-password:
     post:
       summary: Reset password

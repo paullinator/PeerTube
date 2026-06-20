@@ -29,6 +29,8 @@ export class MyAccountChangePasswordComponent extends FormReactive implements On
   error: string
   user: User
 
+  setPasswordEmailSent = false
+
   ngOnInit () {
     const { minLength, maxLength } = this.serverService.getHTMLConfig().fieldsConstraints.users.password
 
@@ -68,6 +70,19 @@ export class MyAccountChangePasswordComponent extends FormReactive implements On
 
           this.error = err.message
         }
+      })
+  }
+
+  // For accounts created through passwordless email login: email a link to set a password
+  askToSetPassword () {
+    this.userService.askResetPassword(this.user.email)
+      .subscribe({
+        next: () => {
+          this.setPasswordEmailSent = true
+          this.notifier.success($localize`An email to set your password has been sent.`)
+        },
+
+        error: err => this.notifier.error(err.message)
       })
   }
 }
