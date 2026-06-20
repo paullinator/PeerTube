@@ -111,6 +111,19 @@ async function getUser (usernameOrEmail?: string, password?: string, options?: {
       user = await createUserFromExternal(bypassLogin.pluginName, bypassLogin.user)
     } else if (user.pluginAuth === bypassLogin.pluginName) {
       user = await updateUserFromExternal(user, bypassLogin.user, bypassLogin.userUpdater)
+    } else if (CONFIG.AUTH.EXTERNAL_AUTH_EMAIL_LINKING === true) {
+      // Account linking by verified email: log into the matching account even though it was not
+      // originally created by this auth method (e.g. a local account or another plugin).
+      // SECURITY: this trusts the auth provider to have verified email ownership.
+      logger.info(
+        'Linking external auth %s to existing account %s by email.',
+        bypassLogin.pluginName,
+        user.email
+      )
+
+      checkUserValidityOrThrow(user, req)
+
+      return user
     }
 
     // Cannot create a user

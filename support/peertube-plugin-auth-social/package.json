@@ -1,0 +1,22 @@
+{
+  "name": "peertube-plugin-auth-social",
+  "version": "0.0.1",
+  "description": "Email-only social login (Google, Facebook, Twitter/X) for PeerTube",
+  "engine": {
+    "peertube": ">=6.0.0"
+  },
+  "keywords": [
+    "peertube",
+    "plugin",
+    "auth",
+    "oauth"
+  ],
+  "homepage": "https://github.com/paullinator/PeerTube",
+  "author": "PeerTube",
+  "bugs": "https://github.com/paullinator/PeerTube/issues",
+  "library": "./main.js",
+  "staticDirs": {},
+  "css": [],
+  "clientScripts": [],
+  "translations": {}
+}

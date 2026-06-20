@@ -602,6 +602,11 @@ const CONFIG = {
       }
     }
   },
+  AUTH: {
+    get EXTERNAL_AUTH_EMAIL_LINKING () {
+      return config.get<boolean>('auth.external_auth_email_linking')
+    }
+  },
   USER: {
     HISTORY: {
       VIDEOS: {

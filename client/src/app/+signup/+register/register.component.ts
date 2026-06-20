@@ -6,14 +6,17 @@ import { AuthService, ServerService } from '@app/core'
 import { HooksService } from '@app/core/plugins/hooks.service'
 import { InstanceAboutAccordionComponent } from '@app/shared/shared-instance/instance-about-accordion.component'
 import { AlertComponent } from '@app/shared/shared-main/common/alert.component'
+import { getExternalAuthHref } from '@peertube/peertube-core-utils'
 import {
   UserRegistrationState,
   PeerTubeProblemDocument,
+  RegisteredExternalAuthConfig,
   ServerConfig,
   ServerStats,
   UserRegister,
   UserRegistration
 } from '@peertube/peertube-models'
+import { environment } from '../../../environments/environment'
 import { LoaderComponent } from '../../shared/shared-main/common/loader.component'
 import { SignupLabelComponent } from '../../shared/shared-main/users/signup-label.component'
 import { SignupStepTitleComponent } from '../shared/signup-step-title.component'
@@ -115,6 +118,18 @@ export class RegisterComponent implements OnInit {
 
   get instanceName () {
     return this.serverConfig.instance.name
+  }
+
+  getExternalLogins () {
+    return this.serverConfig.plugin.registeredExternalAuths
+  }
+
+  hasExternalLogins () {
+    return this.getExternalLogins().length !== 0
+  }
+
+  getAuthHref (auth: RegisteredExternalAuthConfig) {
+    return getExternalAuthHref(environment.apiUrl, auth)
   }
 
   ngOnInit () {

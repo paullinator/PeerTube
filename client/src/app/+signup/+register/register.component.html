@@ -10,6 +10,20 @@
         <my-alert type="info" i18n>You were invited to a channel. Create your account below to get access to it.</my-alert>
       }
 
+      @if (hasExternalLogins()) {
+        <div class="external-login-blocks mb-4">
+          <div class="fw-semibold" i18n>Sign up with</div>
+
+          <div>
+            @for (auth of getExternalLogins(); track auth) {
+              <a class="external-login-block" [href]="getAuthHref(auth)" role="button">
+                {{ auth.authDisplayName }}
+              </a>
+            }
+          </div>
+        </div>
+      }
+
       <my-register-stepper linear>
         <cdk-step i18n-label label="About" [editable]="!signupSuccess">
           <my-signup-step-title mascotImageName="about">

@@ -603,6 +603,14 @@ signup:
       whitelist: []
       blacklist: []
 
+auth:
+  # When enabled, an external auth login (OAuth plugin) whose email matches an existing
+  # local account will log into that account instead of failing or creating a duplicate.
+  # SECURITY: this enables account linking by email. Only enable it if you trust your
+  # identity providers (e.g. Google/Facebook) to have verified email ownership, otherwise
+  # a provider that asserts an arbitrary email could take over an existing account.
+  external_auth_email_linking: false
+
 user:
   history:
     videos:
