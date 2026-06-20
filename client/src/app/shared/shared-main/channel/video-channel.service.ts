@@ -5,6 +5,8 @@ import { formatICU } from '@app/helpers'
 import {
   ActorImage,
   ResultList,
+  VideoChannelAccess,
+  VideoChannelAccessUpdate,
   VideoChannelActivity,
   VideoChannelCollaborator,
   VideoChannelCreate,
@@ -189,6 +191,37 @@ export class VideoChannelService {
     const url = VideoChannelService.BASE_VIDEO_CHANNEL_URL + channelName + '/collaborators/' + collaboratorId
 
     return this.authHttp.delete(url)
+      .pipe(catchError(err => this.restExtractor.handleError(err)))
+  }
+
+  // ---------------------------------------------------------------------------
+  // Per-channel access control
+
+  getChannelAccess (channelName: string) {
+    const url = VideoChannelService.BASE_VIDEO_CHANNEL_URL + channelName + '/access'
+
+    return this.authHttp.get<VideoChannelAccess>(url)
+      .pipe(catchError(err => this.restExtractor.handleError(err)))
+  }
+
+  updateChannelAccess (channelName: string, body: VideoChannelAccessUpdate) {
+    const url = VideoChannelService.BASE_VIDEO_CHANNEL_URL + channelName + '/access'
+
+    return this.authHttp.put(url, body)
+      .pipe(catchError(err => this.restExtractor.handleError(err)))
+  }
+
+  rotateChannelAccess (channelName: string) {
+    const url = VideoChannelService.BASE_VIDEO_CHANNEL_URL + channelName + '/access/rotate'
+
+    return this.authHttp.post(url, {})
+      .pipe(catchError(err => this.restExtractor.handleError(err)))
+  }
+
+  requestChannelAccess (channelName: string, password?: string) {
+    const url = VideoChannelService.BASE_VIDEO_CHANNEL_URL + channelName + '/access/request'
+
+    return this.authHttp.post<{ success: boolean }>(url, { password }, { withCredentials: true })
       .pipe(catchError(err => this.restExtractor.handleError(err)))
   }
 

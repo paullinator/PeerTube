@@ -15,6 +15,9 @@ export interface PeerTubeProblemDocumentData {
   // Feeds
   format?: string
   url?: string
+
+  // Restricted channel access: handle of the channel the viewer must unlock
+  channel?: string
 }
 
 export interface PeerTubeProblemDocument extends PeerTubeProblemDocumentData {

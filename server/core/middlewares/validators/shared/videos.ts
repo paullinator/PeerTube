@@ -3,7 +3,7 @@ import { exists } from '@server/helpers/custom-validators/misc.js'
 import { VideoLoadType, loadVideo } from '@server/lib/model-loaders/index.js'
 import { isUserQuotaValid } from '@server/lib/user.js'
 import { VideoTokensManager } from '@server/lib/video-tokens-manager.js'
-import { authenticateOrFail } from '@server/middlewares/auth.js'
+import { authenticateOrFail, optionalAuthenticate } from '@server/middlewares/auth.js'
 import { VideoFileModel } from '@server/models/video/video-file.js'
 import { VideoPasswordModel } from '@server/models/video/video-password.js'
 import { VideoModel } from '@server/models/video/video.js'
@@ -23,7 +23,8 @@ import {
   MVideoWithRights
 } from '@server/types/models/index.js'
 import { Request, Response } from 'express'
-import { checkCanManageChannel } from './video-channels.js'
+import { VideoChannelModel } from '@server/models/video/video-channel.js'
+import { checkCanManageChannel, checkCanViewChannel } from './video-channels.js'
 
 export async function doesVideoExist (id: number | string, res: Response, fetchType: VideoLoadType = 'full') {
   const userId = res.locals.oauth ? res.locals.oauth.token.User.id : undefined
@@ -113,6 +114,43 @@ export async function checkCanSeeVideo (options: {
   }
 
   throw new Error('Unknown video privacy when checking video right ' + video.url)
+}
+
+// A video may live in a channel restricted by password / allow-list. A previously
+// minted videoFileToken implies access was already proven, so we let it through.
+// This gate runs only on the playback / static-file path (and when minting a
+// videoFileToken), not on metadata reads, so restricted channels stay discoverable.
+export async function checkCanSeeVideoChannelGate (options: {
+  req: Request
+  res: Response
+  video: MVideo
+  hasVideoFileToken: boolean
+}): Promise<boolean> {
+  const { req, res, video, hasVideoFileToken } = options
+
+  if (hasVideoFileToken) return true
+
+  const channel = await VideoChannelModel.loadAndPopulateAccount(video.channelId)
+  if (!channel) return true
+
+  // Several endpoints that funnel through checkCanSeeVideo (captions, storyboards,
+  // chapters, ...) authenticate lazily and have no optionalAuthenticate middleware,
+  // so res.locals.oauth may not be populated yet. Resolve the viewer first, otherwise
+  // an allow-listed account would look anonymous and be denied.
+  await ensureOptionalAuthentication(req, res)
+  if (res.headersSent) return false
+
+  return checkCanViewChannel({ req, res, channel, failRes: res })
+}
+
+// Populate res.locals.oauth from a bearer token if a route did not already
+// run (optional)authenticate. No-op when there is no token or it was already attempted.
+function ensureOptionalAuthentication (req: Request, res: Response) {
+  if (res.locals.oauth?.token.User) return Promise.resolve()
+  if (res.locals.authenticated === false) return Promise.resolve()
+  if (!req.header('authorization')) return Promise.resolve()
+
+  return new Promise<void>(resolve => optionalAuthenticate(req, res, () => resolve()))
 }
 
 async function checkCanSeeUserAuthVideo (options: {
@@ -248,6 +286,9 @@ export async function checkCanAccessVideoStaticFiles (options: {
   const { video, req, res } = options
 
   if (!checkVideoTokenIfNeeded(req, res, video)) return false
+
+  // Enforce per-channel access control on the playback / static-file path only
+  if (!await checkCanSeeVideoChannelGate({ req, res, video, hasVideoFileToken: !!res.locals.videoFileToken })) return false
 
   return checkCanSeeVideo({ ...options, videoFileToken: res.locals.videoFileToken })
 }

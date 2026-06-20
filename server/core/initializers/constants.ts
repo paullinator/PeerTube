@@ -62,7 +62,7 @@ import { CONFIG, registerConfigChangedHandler } from './config.js'
 
 // ---------------------------------------------------------------------------
 
-export const LAST_MIGRATION_VERSION = 1040
+export const LAST_MIGRATION_VERSION = 1045
 
 // ---------------------------------------------------------------------------
 
@@ -409,7 +409,8 @@ export const CONSTRAINTS_FIELDS = {
     DESCRIPTION: { min: 3, max: 1000 }, // Length
     SUPPORT: { min: 3, max: 1000 }, // Length
     EXTERNAL_CHANNEL_URL: { min: 3, max: 2000 }, // Length
-    URL: { min: 3, max: 2000 } // Length
+    URL: { min: 3, max: 2000 }, // Length
+    PASSWORD: { min: 2, max: 100 } // Length
   },
   VIDEO_CHANNEL_SYNCS: {
     EXTERNAL_CHANNEL_URL: { min: 3, max: 2000 } // Length
@@ -1203,6 +1204,14 @@ export const REDUNDANCY = {
 export const ACCEPT_HEADERS = [ 'html', 'application/json' ].concat(ACTIVITY_PUB.POTENTIAL_ACCEPT_HEADERS)
 export const LANGUAGE_COOKIE_NAME = 'clientLanguage'
 export const LANGUAGE_HEADER = 'x-peertube-language'
+
+export const CHANNEL_ACCESS = {
+  PASSWORD_HEADER: 'x-peertube-channel-password',
+  TOKEN_HEADER: 'x-peertube-channel-token',
+  COOKIE_PREFIX: 'peertube-channel-access-',
+  // How long an issued channel access token (and the cookie storing it) stays valid
+  TOKEN_LIFETIME: 1000 * 3600 * 24 * 30 // 30 days
+}
 
 export const OTP = {
   HEADER_NAME: 'x-peertube-otp',

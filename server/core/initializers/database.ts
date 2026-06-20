@@ -23,6 +23,9 @@ import { PlayerSettingModel } from '@server/models/video/player-setting.js'
 import { StoryboardModel } from '@server/models/video/storyboard.js'
 import { VideoChannelActivityModel } from '@server/models/video/video-channel-activity.js'
 import { VideoChannelCollaboratorModel } from '@server/models/video/video-channel-collaborator.js'
+import { VideoChannelAccessModel } from '@server/models/video/video-channel-access.js'
+import { VideoChannelPasswordModel } from '@server/models/video/video-channel-password.js'
+import { VideoChannelAllowedAccountModel } from '@server/models/video/video-channel-allowed-account.js'
 import { VideoChannelSyncModel } from '@server/models/video/video-channel-sync.js'
 import { VideoChapterModel } from '@server/models/video/video-chapter.js'
 import { VideoEmbedPrivacyDomainModel } from '@server/models/video/video-embed-privacy-domain.js'
@@ -212,6 +215,9 @@ export async function initDatabaseModels (silent: boolean) {
     VideoLiveScheduleModel,
     PlayerSettingModel,
     VideoChannelCollaboratorModel,
+    VideoChannelAccessModel,
+    VideoChannelPasswordModel,
+    VideoChannelAllowedAccountModel,
     ActorReservedModel,
     VideoEmbedPrivacyDomainModel
   ])

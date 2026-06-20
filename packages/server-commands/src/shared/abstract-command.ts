@@ -21,6 +21,7 @@ import type { PeerTubeServer } from '../server/server.js'
 export interface OverrideCommandOptions {
   token?: string
   expectedStatus?: HttpStatusCodeType
+  headers?: { [name: string]: string }
 }
 
 interface InternalCommonCommandOptions extends OverrideCommandOptions {

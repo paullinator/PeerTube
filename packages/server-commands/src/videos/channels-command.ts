@@ -4,6 +4,8 @@ import {
   HttpStatusCode,
   ResultList,
   VideoChannel,
+  VideoChannelAccess,
+  VideoChannelAccessUpdate,
   VideoChannelActivity,
   VideoChannelCreate,
   VideoChannelCreateResult,
@@ -251,6 +253,79 @@ export class ChannelsCommand extends AbstractCommand {
       defaultExpectedStatus: HttpStatusCode.OK_200
     })
   }
+
+  // ---------------------------------------------------------------------------
+  // Per-channel access control
+
+  getAccess (
+    options: OverrideCommandOptions & {
+      channelName: string
+    }
+  ) {
+    const path = '/api/v1/video-channels/' + options.channelName + '/access'
+
+    return this.getRequestBody<VideoChannelAccess>({
+      ...options,
+
+      path,
+      implicitToken: true,
+      defaultExpectedStatus: HttpStatusCode.OK_200
+    })
+  }
+
+  updateAccess (
+    options: OverrideCommandOptions & {
+      channelName: string
+      attributes: VideoChannelAccessUpdate
+    }
+  ) {
+    const path = '/api/v1/video-channels/' + options.channelName + '/access'
+
+    return this.putBodyRequest({
+      ...options,
+
+      path,
+      fields: options.attributes,
+      implicitToken: true,
+      defaultExpectedStatus: HttpStatusCode.NO_CONTENT_204
+    })
+  }
+
+  rotateAccess (
+    options: OverrideCommandOptions & {
+      channelName: string
+    }
+  ) {
+    const path = '/api/v1/video-channels/' + options.channelName + '/access/rotate'
+
+    return this.postBodyRequest({
+      ...options,
+
+      path,
+      implicitToken: true,
+      defaultExpectedStatus: HttpStatusCode.NO_CONTENT_204
+    })
+  }
+
+  requestAccess (
+    options: OverrideCommandOptions & {
+      channelName: string
+      password?: string
+    }
+  ) {
+    const path = '/api/v1/video-channels/' + options.channelName + '/access/request'
+
+    return unwrapBody<{ success: boolean }>(this.postBodyRequest({
+      ...options,
+
+      path,
+      fields: { password: options.password },
+      implicitToken: false,
+      defaultExpectedStatus: HttpStatusCode.OK_200
+    }))
+  }
+
+  // ---------------------------------------------------------------------------
 
   importVideos (
     options: OverrideCommandOptions & VideosImportInChannelCreate & {

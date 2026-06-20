@@ -25,6 +25,7 @@ import { VideoDetails } from '@app/shared/shared-main/video/video-details.model'
 import { VideoFileTokenService } from '@app/shared/shared-main/video/video-file-token.service'
 import { Video } from '@app/shared/shared-main/video/video.model'
 import { VideoService } from '@app/shared/shared-main/video/video.service'
+import { VideoChannelService } from '@app/shared/shared-main/channel/video-channel.service'
 import { SubscribeButtonComponent } from '@app/shared/shared-user-subscription/subscribe-button.component'
 import { LiveVideoService } from '@app/shared/shared-video-live/live-video.service'
 import { VideoPlaylist } from '@app/shared/shared-video-playlist/video-playlist.model'
@@ -150,6 +151,7 @@ export class VideoWatchComponent implements OnInit, OnDestroy {
   private location = inject(PlatformLocation)
   private metaService = inject(MetaService)
   private localeId = inject(LOCALE_ID)
+  private videoChannelService = inject(VideoChannelService)
 
   readonly videoWatchPlaylist = viewChild<VideoWatchPlaylistComponent>('videoWatchPlaylist')
   readonly subscribeButton = viewChild<SubscribeButtonComponent>('subscribeButton')
@@ -442,6 +444,21 @@ export class VideoWatchComponent implements OnInit, OnDestroy {
           if (confirmed === false) return this.location.back()
 
           this.loadVideo({ ...options, videoPassword: password })
+        } else if (
+          err.body.code === ServerErrorCode.CHANNEL_REQUIRES_PASSWORD ||
+          err.body.code === ServerErrorCode.INCORRECT_CHANNEL_PASSWORD
+        ) {
+          const confirmed = await this.handleChannelPasswordError(err)
+
+          if (confirmed === false) return this.location.back()
+
+          // The server set a persistent access cookie on success, so just retry
+          this.loadVideo({ ...options })
+        } else if (err.body.code === ServerErrorCode.CHANNEL_ACCESS_DENIED) {
+          // Restricted channel with no password available to this viewer
+          this.notifier.error($localize`This channel is restricted. Ask the channel owner to grant you access.`)
+
+          return this.location.back()
         } else {
           this.handleRequestError(err)
         }
@@ -532,6 +549,29 @@ export class VideoWatchComponent implements OnInit, OnDestroy {
       message: $localize`You need a password to watch this video`,
       title: $localize`This video is password protected`,
       errorMessage: isIncorrectPassword ? $localize`Incorrect password, please enter a correct password` : ''
+    })
+  }
+
+  // Deep-linked watch URL of a video that lives in a restricted channel.
+  // Prompt for the channel password and unlock the channel (server sets a persistent cookie).
+  private async handleChannelPasswordError (err: any) {
+    const channelHandle = err.body?.channel
+    const isIncorrectPassword = err.body.code === ServerErrorCode.INCORRECT_CHANNEL_PASSWORD
+
+    const { confirmed, password } = await this.confirmService.confirmWithPassword({
+      message: $localize`You need a password to watch videos of this channel`,
+      title: $localize`This channel is restricted`,
+      errorMessage: isIncorrectPassword ? $localize`Incorrect password, please enter a correct password` : ''
+    })
+
+    if (confirmed === false || !channelHandle) return false
+
+    return new Promise<boolean>(resolve => {
+      this.videoChannelService.requestChannelAccess(channelHandle, password)
+        .subscribe({
+          next: ({ success }) => resolve(success),
+          error: () => resolve(false)
+        })
     })
   }
 

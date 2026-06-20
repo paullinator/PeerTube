@@ -54,12 +54,14 @@ import {
   commonVideoPlaylistFiltersValidator,
   videoPlaylistsReorderInChannelValidator
 } from '../../../middlewares/validators/videos/video-playlists.js'
+import { buildChannelViewerAccessInfo } from '../../../middlewares/validators/shared/video-channels.js'
 import { AccountModel } from '../../../models/account/account.js'
 import { guessAdditionalAttributesFromQuery } from '../../../models/video/formatter/index.js'
 import { VideoChannelModel } from '../../../models/video/video-channel.js'
 import { VideoPlaylistModel } from '../../../models/video/video-playlist.js'
 import { VideoModel } from '../../../models/video/video.js'
 import { ownershipChannelRouter } from './ownership.js'
+import { videoChannelAccessRouter } from './video-channel-access.js'
 import { channelCollaborators } from './video-channel-collaborators.js'
 import { videoChannelLogosRouter } from './video-channel-logos.js'
 
@@ -71,6 +73,7 @@ videoChannelRouter.use(apiRateLimiter)
 videoChannelRouter.use(channelCollaborators)
 videoChannelRouter.use(videoChannelLogosRouter)
 videoChannelRouter.use(ownershipChannelRouter)
+videoChannelRouter.use(videoChannelAccessRouter)
 
 videoChannelRouter.get(
   '/',
@@ -107,6 +110,7 @@ videoChannelRouter.delete(
 
 videoChannelRouter.get(
   '/:handle',
+  optionalAuthenticate,
   asyncMiddleware(videoChannelsHandleValidatorFactory({ checkIsLocal: false, checkCanManage: false, checkIsOwner: false })),
   asyncMiddleware(getVideoChannel)
 )
@@ -312,7 +316,14 @@ async function getVideoChannel (req: express.Request, res: express.Response) {
 
   scheduleActorRefreshIfNeeded(videoChannel.Actor)
 
-  return res.json(videoChannel.toFormattedJSON())
+  const formatted = videoChannel.toFormattedJSON()
+
+  // Attach per-channel access info for local channels so the client can render the gate
+  if (videoChannel.Actor.isLocal()) {
+    Object.assign(formatted, await buildChannelViewerAccessInfo(req, res, videoChannel))
+  }
+
+  return res.json(formatted)
 }
 
 // ---------------------------------------------------------------------------

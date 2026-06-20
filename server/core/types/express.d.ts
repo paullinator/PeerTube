@@ -191,6 +191,9 @@ declare module 'express' {
       videoChannel?: MChannelBannerAccountDefault
       videoChannelSync?: MChannelSyncChannel
 
+      // Resolved local account ids for channel access allow-list updates
+      allowedAccountIds?: number[]
+
       videoPlaylistFull?: MVideoPlaylistFull
       videoPlaylistSummary?: MVideoPlaylistFullSummary
 

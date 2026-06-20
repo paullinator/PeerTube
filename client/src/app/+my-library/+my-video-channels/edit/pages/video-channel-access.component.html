@@ -1,0 +1,124 @@
+<div>
+  <h2 class="form-title">
+    <my-global-icon iconName="shield"></my-global-icon>
+
+    <ng-container i18n>Access</ng-container>
+  </h2>
+
+  <div class="pt-two-cols">
+    <div class="title-col">
+      <h3 i18n>VISIBILITY</h3>
+    </div>
+
+    <div class="content-col">
+      <p i18n>
+        Your channel always stays visible in listings. These settings control who can watch its videos and playlists.
+      </p>
+
+      <div class="form-group">
+        <div class="form-check">
+          <input
+            type="radio" id="accessPublic" name="accessMode" class="form-check-input"
+            [value]="accessMode.PUBLIC" [(ngModel)]="mode"
+          >
+          <label for="accessPublic" class="form-check-label" i18n>Anyone can view (default)</label>
+        </div>
+
+        <div class="form-check mt-2">
+          <input
+            type="radio" id="accessRestricted" name="accessMode" class="form-check-input"
+            [value]="accessMode.RESTRICTED" [(ngModel)]="mode"
+          >
+          <label for="accessRestricted" class="form-check-label" i18n>Restricted access</label>
+        </div>
+      </div>
+
+      @if (isRestricted()) {
+        <my-alert type="warning" i18n>
+          Restricting a channel makes it <strong>local-only</strong>: its videos are removed from other instances and will
+          no longer be federated until you make the channel public again.
+        </my-alert>
+      }
+    </div>
+  </div>
+
+  @if (isRestricted()) {
+    <div class="pt-two-cols mt-4">
+      <div class="title-col">
+        <h3 i18n>PASSWORDS</h3>
+      </div>
+
+      <div class="content-col">
+        <p i18n>Viewers who enter one of these passwords get persistent access to the channel.</p>
+
+        <div class="entry-list">
+          @for (password of passwords; track password) {
+            <div class="entry-block">
+              <span class="entry-label">{{ password }}</span>
+
+              <my-button theme="tertiary" icon="delete" (click)="removePassword(password)" i18n-title title="Remove"></my-button>
+            </div>
+          } @empty {
+            <div i18n>No passwords yet</div>
+          }
+        </div>
+
+        <div class="mt-3">
+          <label for="addPassword" i18n>New password</label>
+
+          <div class="d-flex flex-wrap gap-3">
+            <input type="text" id="addPassword" class="form-control" [(ngModel)]="newPassword" (keyup.enter)="addPassword()">
+
+            <my-button theme="secondary" (click)="addPassword()" [disabled]="!newPassword" i18n>Add password</my-button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="pt-two-cols mt-4">
+      <div class="title-col">
+        <h3 i18n>ALLOWED ACCOUNTS</h3>
+      </div>
+
+      <div class="content-col">
+        <p i18n>These accounts can access the channel without entering a password.</p>
+
+        <div class="entry-list">
+          @for (account of allowedAccounts; track account.name) {
+            <div class="entry-block">
+              <my-actor-avatar [actor]="account" actorType="account" size="36"></my-actor-avatar>
+
+              <span class="entry-label">{{ account.displayName || account.name }}</span>
+
+              <my-button theme="tertiary" icon="delete" (click)="removeAccount(account)" i18n-title title="Remove"></my-button>
+            </div>
+          } @empty {
+            <div i18n>No allowed accounts yet</div>
+          }
+        </div>
+
+        <div class="mt-3">
+          <label for="addAccount" i18n>Account handle</label>
+
+          <div class="d-flex flex-wrap gap-3">
+            <my-user-auto-complete inputName="addAccount" [(ngModel)]="newAccountUsername"></my-user-auto-complete>
+
+            <my-button theme="secondary" (click)="addAccount()" [disabled]="!newAccountUsername" i18n>Add account</my-button>
+          </div>
+        </div>
+      </div>
+    </div>
+  }
+
+  <div class="pt-two-cols mt-4">
+    <div class="title-col"></div>
+
+    <div class="content-col d-flex flex-wrap gap-3">
+      <my-button theme="primary" (click)="save()" i18n>Save access settings</my-button>
+
+      @if (isRestricted()) {
+        <my-button theme="danger" (click)="revokeAll()" i18n>Revoke all existing access</my-button>
+      }
+    </div>
+  </div>
+</div>

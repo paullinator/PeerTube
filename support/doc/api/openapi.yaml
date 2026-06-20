@@ -5525,6 +5525,88 @@ paths:
         '204':
           description: successful operation
 
+  '/api/v1/video-channels/{channelHandle}/access':
+    get:
+      summary: Get channel access policy
+      description: Get the access policy (mode, passwords, allowed accounts) of a local channel
+      operationId: getVideoChannelAccess
+      security:
+        - OAuth2: []
+      tags:
+        - Video Channels
+      parameters:
+        - $ref: '#/components/parameters/channelHandle'
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VideoChannelAccess'
+    put:
+      summary: Update channel access policy
+      description: Set the access mode, passwords and allowed accounts of a local channel
+      operationId: updateVideoChannelAccess
+      security:
+        - OAuth2: []
+      tags:
+        - Video Channels
+      parameters:
+        - $ref: '#/components/parameters/channelHandle'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VideoChannelAccessUpdate'
+      responses:
+        '204':
+          description: successful operation
+
+  '/api/v1/video-channels/{channelHandle}/access/rotate':
+    post:
+      summary: Revoke all existing channel access
+      description: Rotate the channel access secret, invalidating every previously issued access cookie/token
+      operationId: rotateVideoChannelAccess
+      security:
+        - OAuth2: []
+      tags:
+        - Video Channels
+      parameters:
+        - $ref: '#/components/parameters/channelHandle'
+      responses:
+        '204':
+          description: successful operation
+
+  '/api/v1/video-channels/{channelHandle}/access/request':
+    post:
+      summary: Request access to a restricted channel
+      description: >-
+        Submit a channel password (or rely on an allow-listed account) to unlock a restricted channel.
+        On success the server sets a persistent access cookie.
+      operationId: requestVideoChannelAccess
+      tags:
+        - Video Channels
+      parameters:
+        - $ref: '#/components/parameters/channelHandle'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                password:
+                  type: string
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+
   '/api/v1/video-channel-syncs':
     post:
       summary: Create a synchronization for a video channel
@@ -9448,6 +9530,20 @@ components:
       required: false
       schema:
         type: string
+    channelPasswordHeader:
+      name: x-peertube-channel-password
+      description: Provide a password to access content of a restricted channel
+      in: header
+      required: false
+      schema:
+        type: string
+    channelTokenHeader:
+      name: x-peertube-channel-token
+      description: Signed token proving access to a restricted channel (alternative to the access cookie)
+      in: header
+      required: false
+      schema:
+        type: string
     resumableUploadInitContentLengthHeader:
         name: X-Upload-Content-Length
         in: header
@@ -12703,6 +12799,14 @@ components:
                 $ref: '#/components/schemas/ActorImage'
             ownerAccount:
               $ref: '#/components/schemas/Account'
+            accessMode:
+              $ref: '#/components/schemas/VideoChannelAccessMode'
+            requiresPassword:
+              type: boolean
+              description: Whether the (restricted) channel requires a password to access its content
+            viewerHasAccess:
+              type: boolean
+              description: Whether the current viewer is allowed to access the (restricted) channel content
 
     VideoChannelEdit:
       properties:
@@ -13783,6 +13887,49 @@ components:
       items:
         $ref: "#/components/schemas/VideoPassword/properties/password"
       uniqueItems: true
+
+    VideoChannelAccessMode:
+      type: integer
+      description: 'Channel access mode: 1 = public (default), 2 = restricted'
+      enum:
+        - 1
+        - 2
+    VideoChannelPassword:
+      properties:
+        id:
+          $ref: '#/components/schemas/id'
+        password:
+          type: string
+          minLength: 2
+        channelId:
+          $ref: '#/components/schemas/id'
+    VideoChannelAccess:
+      properties:
+        mode:
+          $ref: '#/components/schemas/VideoChannelAccessMode'
+        passwords:
+          type: array
+          items:
+            $ref: '#/components/schemas/VideoChannelPassword'
+        allowedAccounts:
+          type: array
+          items:
+            $ref: '#/components/schemas/AccountSummary'
+    VideoChannelAccessUpdate:
+      required:
+        - mode
+      properties:
+        mode:
+          $ref: '#/components/schemas/VideoChannelAccessMode'
+        passwords:
+          type: array
+          items:
+            type: string
+            minLength: 2
+        allowedAccountNames:
+          type: array
+          items:
+            type: string
 
     VideoEmbedPrivacy:
       type: integer

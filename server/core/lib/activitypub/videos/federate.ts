@@ -1,6 +1,7 @@
 import { forceNumber } from '@peertube/peertube-core-utils'
 import { VideoPrivacy, VideoPrivacyType, VideoState, VideoStateType } from '@peertube/peertube-models'
 import { CONFIG } from '@server/initializers/config.js'
+import { VideoChannelAccessModel } from '@server/models/video/video-channel-access.js'
 import { MVideoAPLight, MVideoWithBlacklistRights } from '@server/types/models/index.js'
 import { Transaction } from 'sequelize'
 import { sendCreateVideo, sendUpdateVideo } from '../send/index.js'
@@ -8,6 +9,9 @@ import { shareByServer, shareByVideoChannel } from '../share.js'
 
 export async function federateVideoIfNeeded (videoArg: MVideoAPLight, isNewVideo: boolean, transaction?: Transaction) {
   if (!canVideoBeFederated(videoArg, isNewVideo)) return
+
+  // Videos of restricted (password/allow-list) channels are local-only and never federated
+  if (!await isChannelFederatable(videoArg.channelId)) return
 
   const video = await videoArg.lightAPToFullAP(transaction)
 
@@ -44,6 +48,11 @@ export function isPrivacyForFederation (privacy: VideoPrivacyType) {
 
   return castedPrivacy === VideoPrivacy.PUBLIC ||
     (CONFIG.FEDERATION.VIDEOS.FEDERATE_UNLISTED === true && castedPrivacy === VideoPrivacy.UNLISTED)
+}
+
+// A restricted channel (per-channel password/allow-list access) keeps its videos local-only
+export async function isChannelFederatable (channelId: number) {
+  return !await VideoChannelAccessModel.isRestricted(channelId)
 }
 
 export function isStateForFederation (state: VideoStateType) {

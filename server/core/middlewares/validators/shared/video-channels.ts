@@ -1,8 +1,17 @@
-import { HttpStatusCode, UserRight, UserRightType } from '@peertube/peertube-models'
+import { HttpStatusCode, ServerErrorCode, UserRight, UserRightType, VideoChannelAccessMode } from '@peertube/peertube-models'
+import {
+  getChannelAccessTokenFromRequest,
+  grantChannelAccess,
+  isChannelAccessTokenValid
+} from '@server/lib/video-channel-access.js'
+import { VideoChannelAccessModel } from '@server/models/video/video-channel-access.js'
+import { VideoChannelAllowedAccountModel } from '@server/models/video/video-channel-allowed-account.js'
 import { VideoChannelCollaboratorModel } from '@server/models/video/video-channel-collaborator.js'
+import { VideoChannelPasswordModel } from '@server/models/video/video-channel-password.js'
 import { VideoChannelModel } from '@server/models/video/video-channel.js'
-import { MChannelBannerAccountDefault, MChannelUserId, MUserAccountId } from '@server/types/models/index.js'
+import { MChannelAccountDefault, MChannelBannerAccountDefault, MChannelUserId, MUserAccountId } from '@server/types/models/index.js'
 import express from 'express'
+import { CHANNEL_ACCESS } from '@server/initializers/constants.js'
 import { checkCanManageAccount } from './users.js'
 
 type CommonOptions = {
@@ -93,6 +102,100 @@ export async function checkCanManageChannel (
   }
 
   return true
+}
+
+// ---------------------------------------------------------------------------
+// Per-channel access control (viewing)
+// ---------------------------------------------------------------------------
+
+// Returns true if the caller is allowed to view the (restricted or not) channel content.
+// When access is newly proven (password/allow-list), issues a signed access cookie.
+export async function checkCanViewChannel (options: {
+  req: express.Request
+  res: express.Response
+  channel: MChannelUserId & { Actor?: { preferredUsername?: string } }
+  // null => do not write a failure response, just return false
+  failRes: express.Response | null
+}): Promise<boolean> {
+  const { req, res, channel, failRes } = options
+
+  const access = await VideoChannelAccessModel.loadByChannelId(channel.id)
+
+  // No policy row, or explicitly public => behaves exactly like stock PeerTube
+  if (!access || access.mode !== VideoChannelAccessMode.RESTRICTED) return true
+
+  // Channel managers (owner/collaborator/admin) always bypass the gate
+  const user = res.locals.oauth?.token.User
+  if (user) {
+    if (await checkCanManageChannel({ channel, user, req, res: null, checkCanManage: true, checkIsOwner: false })) {
+      return true
+    }
+
+    // Allow-listed account => grant + persist access
+    if (await VideoChannelAllowedAccountModel.isAllowedForUser({ userId: user.id, channelId: channel.id })) {
+      grantChannelAccess(res, channel.id, access.tokenSecret)
+      return true
+    }
+  }
+
+  // Already-proven access via signed cookie/header
+  const token = getChannelAccessTokenFromRequest(req, channel.id)
+  if (token && isChannelAccessTokenValid({ token, channelId: channel.id, tokenSecret: access.tokenSecret })) {
+    return true
+  }
+
+  const channelHandle = buildChannelHandle(channel)
+
+  // Try a submitted channel password
+  const password = req.header(CHANNEL_ACCESS.PASSWORD_HEADER)
+  if (password) {
+    if (await VideoChannelPasswordModel.isACorrectPassword({ channelId: channel.id, password })) {
+      grantChannelAccess(res, channel.id, access.tokenSecret)
+      return true
+    }
+
+    failRes?.fail({
+      status: HttpStatusCode.FORBIDDEN_403,
+      type: ServerErrorCode.INCORRECT_CHANNEL_PASSWORD,
+      message: req.t('Incorrect channel password. Access to the channel is denied'),
+      data: { channel: channelHandle }
+    })
+    return false
+  }
+
+  const hasPassword = await VideoChannelPasswordModel.countByChannelId(channel.id) > 0
+
+  failRes?.fail({
+    status: HttpStatusCode.FORBIDDEN_403,
+    type: hasPassword
+      ? ServerErrorCode.CHANNEL_REQUIRES_PASSWORD
+      : ServerErrorCode.CHANNEL_ACCESS_DENIED,
+    message: hasPassword
+      ? req.t('Please provide a password to access this channel')
+      : req.t('You are not allowed to access this channel'),
+    data: { channel: channelHandle }
+  })
+
+  return false
+}
+
+function buildChannelHandle (channel: MChannelUserId & { Actor?: { preferredUsername?: string } }) {
+  return channel.Actor?.preferredUsername
+}
+
+// For the channel get endpoint: lightweight info so the client can render the gate
+export async function buildChannelViewerAccessInfo (req: express.Request, res: express.Response, channel: MChannelAccountDefault) {
+  const access = await VideoChannelAccessModel.loadByChannelId(channel.id)
+
+  if (!access || access.mode !== VideoChannelAccessMode.RESTRICTED) {
+    return { mode: VideoChannelAccessMode.PUBLIC, requiresPassword: false, viewerHasAccess: true }
+  }
+
+  const requiresPassword = await VideoChannelPasswordModel.countByChannelId(channel.id) > 0
+
+  const viewerHasAccess = await checkCanViewChannel({ req, res, channel, failRes: null })
+
+  return { mode: VideoChannelAccessMode.RESTRICTED, requiresPassword, viewerHasAccess }
 }
 
 // ---------------------------------------------------------------------------

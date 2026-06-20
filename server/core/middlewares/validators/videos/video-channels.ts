@@ -1,17 +1,19 @@
-import { HttpStatusCode, VideosImportInChannelCreate } from '@peertube/peertube-models'
+import { HttpStatusCode, VideoChannelAccessMode, VideosImportInChannelCreate } from '@peertube/peertube-models'
 import { isUrlValid } from '@server/helpers/custom-validators/activitypub/misc.js'
 import { CONFIG } from '@server/initializers/config.js'
 import { loadReservedActorName } from '@server/lib/local-actor.js'
 import { MChannelAccountDefault } from '@server/types/models/index.js'
 import express from 'express'
 import { body, param, query } from 'express-validator'
-import { isBooleanValid, isIdValid, toBooleanOrNull } from '../../../helpers/custom-validators/misc.js'
+import { exists, isBooleanValid, isIdValid, toBooleanOrNull } from '../../../helpers/custom-validators/misc.js'
 import {
   isVideoChannelDescriptionValid,
   isVideoChannelDisplayNameValid,
+  isVideoChannelPasswordValid,
   isVideoChannelSupportValid,
   isVideoChannelUsernameValid
 } from '../../../helpers/custom-validators/video-channels.js'
+import { AccountModel } from '../../../models/account/account.js'
 import { VideoChannelModel } from '../../../models/video/video-channel.js'
 import { areValidationErrors, checkUserQuota, doesChannelHandleExist } from '../shared/index.js'
 import { doesVideoChannelSyncIdExist } from '../shared/video-channel-syncs.js'
@@ -162,6 +164,62 @@ export const videoChannelImportVideosValidator = [
 
     const channelUser = { id: res.locals.videoChannel.Account.userId }
     if (!await checkUserQuota({ channelUser, uploadSize: 1, req, res })) return
+
+    return next()
+  }
+]
+
+// ---------------------------------------------------------------------------
+// Channel access policy management (owner/collaborator/admin)
+// ---------------------------------------------------------------------------
+
+export const updateVideoChannelAccessValidator = [
+  body('mode')
+    .custom(value => exists(value) && (Object.values(VideoChannelAccessMode) as number[]).includes(+value))
+    .withMessage('Should have a valid channel access mode'),
+
+  body('passwords')
+    .optional()
+    .isArray().withMessage('Should have a valid passwords array'),
+  body('passwords.*')
+    .custom(isVideoChannelPasswordValid),
+
+  body('allowedAccountNames')
+    .optional()
+    .isArray().withMessage('Should have a valid allowedAccountNames array'),
+
+  async (req: express.Request, res: express.Response, next: express.NextFunction) => {
+    if (areValidationErrors(req, res)) return
+
+    const allowedAccountNames: string[] = req.body.allowedAccountNames || []
+    const accountIds: number[] = []
+
+    for (const name of allowedAccountNames) {
+      const account = await AccountModel.loadLocalByName(name)
+      if (!account) {
+        res.fail({
+          status: HttpStatusCode.NOT_FOUND_404,
+          message: req.t('Account {name} not found', { name })
+        })
+        return
+      }
+
+      accountIds.push(account.id)
+    }
+
+    res.locals.allowedAccountIds = accountIds
+
+    return next()
+  }
+]
+
+export const requestVideoChannelAccessValidator = [
+  body('password')
+    .optional()
+    .custom(isVideoChannelPasswordValid),
+
+  (req: express.Request, res: express.Response, next: express.NextFunction) => {
+    if (areValidationErrors(req, res)) return
 
     return next()
   }

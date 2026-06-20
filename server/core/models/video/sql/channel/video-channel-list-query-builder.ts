@@ -214,7 +214,10 @@ export class VideoChannelListQueryBuilder extends AbstractListQuery {
 
       this.tableAttributes.getAccountAvatarAttributes(),
       this.tableAttributes.getChannelAvatarAttributes(),
-      this.tableAttributes.getChannelBannerAttributes()
+      this.tableAttributes.getChannelBannerAttributes(),
+
+      // Per-channel access mode (null = public). Lets listings render a "restricted" badge.
+      `(SELECT "mode" FROM "videoChannelAccess" WHERE "channelId" = "VideoChannelModel"."id") AS "accessMode"`
     ]
 
     if (this.options.statsDaysPrior) {

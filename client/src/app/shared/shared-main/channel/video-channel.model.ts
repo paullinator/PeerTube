@@ -1,5 +1,12 @@
 import { maxBy } from '@peertube/peertube-core-utils'
-import { ActorImage, Account as ServerAccount, VideoChannel as ServerVideoChannel, ViewsPerDate } from '@peertube/peertube-models'
+import {
+  ActorImage,
+  Account as ServerAccount,
+  VideoChannelAccessMode,
+  VideoChannelAccessModeType,
+  VideoChannel as ServerVideoChannel,
+  ViewsPerDate
+} from '@peertube/peertube-models'
 import { Actor } from '../account/actor.model'
 
 export class VideoChannel extends Actor implements ServerVideoChannel {
@@ -23,6 +30,10 @@ export class VideoChannel extends Actor implements ServerVideoChannel {
 
   viewsPerDay?: ViewsPerDate[]
   totalViews?: number
+
+  accessMode?: VideoChannelAccessModeType
+  requiresPassword?: boolean
+  viewerHasAccess?: boolean
 
   static GET_ACTOR_BANNER_URL (channel: Partial<Pick<ServerVideoChannel, 'banners'>>) {
     if (!channel || !Array.isArray(channel.banners) || channel.banners.length === 0) {
@@ -63,6 +74,10 @@ export class VideoChannel extends Actor implements ServerVideoChannel {
 
     this.videosCount = hash.videosCount
 
+    this.accessMode = hash.accessMode ?? VideoChannelAccessMode.PUBLIC
+    this.requiresPassword = hash.requiresPassword ?? false
+    this.viewerHasAccess = hash.viewerHasAccess ?? true
+
     if (hash.updatedAt) this.updatedAt = new Date(hash.updatedAt.toString())
 
     if (hash.viewsPerDay) {
@@ -83,5 +98,9 @@ export class VideoChannel extends Actor implements ServerVideoChannel {
 
   updateComputedAttributes () {
     this.bannerUrl = VideoChannel.GET_ACTOR_BANNER_URL(this)
+  }
+
+  isRestricted () {
+    return this.accessMode === VideoChannelAccessMode.RESTRICTED
   }
 }

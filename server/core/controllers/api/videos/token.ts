@@ -10,7 +10,7 @@ tokenRouter.post(
   '/:id/token',
   optionalAuthenticate,
   asyncMiddleware(videoGetValidatorFactory('with-blacklist')),
-  videoFileTokenValidator,
+  asyncMiddleware(videoFileTokenValidator),
   generateToken
 )
 

@@ -1,3 +1,4 @@
+export * from './video-channel-access.model.js'
 export * from './video-channel-activity.model.js'
 export * from './video-channel-collaborator.model.js'
 export * from './video-channel-create-result.model.js'
