@@ -1,3 +1,4 @@
+import { DatePipe } from '@angular/common'
 import { Component, inject, OnInit } from '@angular/core'
 import { FormsModule } from '@angular/forms'
 import { ConfirmService, Notifier } from '@app/core'
@@ -5,9 +6,15 @@ import { ActorAvatarComponent } from '@app/shared/shared-actor-image/actor-avata
 import { UserAutoCompleteComponent } from '@app/shared/shared-forms/user-auto-complete.component'
 import { GlobalIconComponent } from '@app/shared/shared-icons/global-icon.component'
 import { ButtonComponent } from '@app/shared/shared-main/buttons/button.component'
+import { CopyButtonComponent } from '@app/shared/shared-main/buttons/copy-button.component'
 import { AlertComponent } from '@app/shared/shared-main/common/alert.component'
 import { VideoChannelService } from '@app/shared/shared-main/channel/video-channel.service'
-import { AccountSummary, VideoChannelAccessMode, VideoChannelAccessModeType } from '@peertube/peertube-models'
+import {
+  AccountSummary,
+  VideoChannelAccessMode,
+  VideoChannelAccessModeType,
+  VideoChannelInviteWithURL
+} from '@peertube/peertube-models'
 import { VideoChannelEditControllerService } from '../video-channel-edit-controller.service'
 
 @Component({
@@ -15,9 +22,11 @@ import { VideoChannelEditControllerService } from '../video-channel-edit-control
   templateUrl: './video-channel-access.component.html',
   styleUrls: [ './video-channel-access.component.scss' ],
   imports: [
+    DatePipe,
     FormsModule,
     GlobalIconComponent,
     ButtonComponent,
+    CopyButtonComponent,
     AlertComponent,
     ActorAvatarComponent,
     UserAutoCompleteComponent
@@ -40,6 +49,10 @@ export class VideoChannelAccessComponent implements OnInit {
   newPassword = ''
   newAccountUsername = ''
 
+  invites: VideoChannelInviteWithURL[] = []
+  newInviteMaxUses: number = null
+  newInviteExpiresAt: string = null
+
   loaded = false
 
   ngOnInit () {
@@ -56,6 +69,8 @@ export class VideoChannelAccessComponent implements OnInit {
 
         error: err => this.notifier.handleError(err)
       })
+
+    this.loadInvites()
   }
 
   isRestricted () {
@@ -127,5 +142,57 @@ export class VideoChannelAccessComponent implements OnInit {
 
         error: err => this.notifier.handleError(err)
       })
+  }
+
+  // ---------------------------------------------------------------------------
+  // Invite links
+
+  private loadInvites () {
+    this.channelService.listChannelInvites(this.channelName)
+      .subscribe({
+        next: ({ data }) => this.invites = data,
+
+        error: err => this.notifier.handleError(err)
+      })
+  }
+
+  createInvite () {
+    this.channelService.createChannelInvite(this.channelName, {
+      maxUses: this.newInviteMaxUses || null,
+      expiresAt: this.newInviteExpiresAt || null
+    }).subscribe({
+      next: invite => {
+        this.invites.unshift(invite)
+        this.newInviteMaxUses = null
+        this.newInviteExpiresAt = null
+        this.notifier.success($localize`Invite link created`)
+      },
+
+      error: err => this.notifier.handleError(err)
+    })
+  }
+
+  async removeInvite (invite: VideoChannelInviteWithURL) {
+    const res = await this.confirmService.confirm(
+      $localize`This invite link will stop working. Continue?`,
+      $localize`Revoke invite link`
+    )
+    if (!res) return
+
+    this.channelService.removeChannelInvite(this.channelName, invite.id)
+      .subscribe({
+        next: () => {
+          this.invites = this.invites.filter(i => i.id !== invite.id)
+          this.notifier.success($localize`Invite link revoked`)
+        },
+
+        error: err => this.notifier.handleError(err)
+      })
+  }
+
+  inviteUsesLabel (invite: VideoChannelInviteWithURL) {
+    if (invite.maxUses) return `${invite.uses} / ${invite.maxUses}`
+
+    return `${invite.uses}`
   }
 }

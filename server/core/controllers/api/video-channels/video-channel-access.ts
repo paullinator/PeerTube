@@ -1,17 +1,26 @@
-import { HttpStatusCode, VideoChannelAccess, VideoChannelAccessMode, VideoChannelAccessUpdate } from '@peertube/peertube-models'
+import {
+  HttpStatusCode,
+  VideoChannelAccess,
+  VideoChannelAccessMode,
+  VideoChannelAccessUpdate
+} from '@peertube/peertube-models'
 import { logger } from '@server/helpers/logger.js'
+import { WEBSERVER } from '@server/initializers/constants.js'
 import { sequelizeTypescript } from '@server/initializers/database.js'
 import { generateChannelTokenSecret, grantChannelAccess } from '@server/lib/video-channel-access.js'
 import { federateAllVideosOfChannel, unfederateAllVideosOfChannel } from '@server/lib/video-channel.js'
 import { VideoChannelAccessModel } from '@server/models/video/video-channel-access.js'
 import { VideoChannelAllowedAccountModel } from '@server/models/video/video-channel-allowed-account.js'
+import { VideoChannelInviteModel } from '@server/models/video/video-channel-invite.js'
 import { VideoChannelPasswordModel } from '@server/models/video/video-channel-password.js'
 import express from 'express'
 import {
   asyncMiddleware,
   asyncRetryTransactionMiddleware,
   authenticate,
+  createVideoChannelInviteValidator,
   optionalAuthenticate,
+  removeVideoChannelInviteValidator,
   requestVideoChannelAccessValidator,
   updateVideoChannelAccessValidator,
   videoChannelsHandleValidatorFactory
@@ -48,6 +57,33 @@ videoChannelAccessRouter.post(
   asyncMiddleware(videoChannelsHandleValidatorFactory({ checkIsLocal: true, checkCanManage: false, checkIsOwner: false })),
   requestVideoChannelAccessValidator,
   asyncMiddleware(requestVideoChannelAccess)
+)
+
+// ---------------------------------------------------------------------------
+// Invite links (owner/collaborator/admin)
+// ---------------------------------------------------------------------------
+
+videoChannelAccessRouter.get(
+  '/:handle/invites',
+  authenticate,
+  asyncMiddleware(videoChannelsHandleValidatorFactory({ checkIsLocal: true, checkCanManage: true, checkIsOwner: false })),
+  asyncMiddleware(listVideoChannelInvites)
+)
+
+videoChannelAccessRouter.post(
+  '/:handle/invites',
+  authenticate,
+  asyncMiddleware(videoChannelsHandleValidatorFactory({ checkIsLocal: true, checkCanManage: true, checkIsOwner: false })),
+  createVideoChannelInviteValidator,
+  asyncMiddleware(createVideoChannelInvite)
+)
+
+videoChannelAccessRouter.delete(
+  '/:handle/invites/:inviteId',
+  authenticate,
+  asyncMiddleware(videoChannelsHandleValidatorFactory({ checkIsLocal: true, checkCanManage: true, checkIsOwner: false })),
+  asyncMiddleware(removeVideoChannelInviteValidator),
+  asyncMiddleware(removeVideoChannelInvite)
 )
 
 // ---------------------------------------------------------------------------
@@ -162,4 +198,55 @@ async function requestVideoChannelAccess (req: express.Request, res: express.Res
   }
 
   return res.json({ success: false })
+}
+
+// ---------------------------------------------------------------------------
+// Invite links
+// ---------------------------------------------------------------------------
+
+function formatInvite (invite: { id: number, code: string, channelId: number, maxUses: number, uses: number, expiresAt: Date }) {
+  return {
+    id: invite.id,
+    code: invite.code,
+    channelId: invite.channelId,
+    maxUses: invite.maxUses ?? null,
+    uses: invite.uses,
+    expiresAt: invite.expiresAt ?? null,
+    url: WEBSERVER.URL + '/video-channels/invite/' + invite.code
+  }
+}
+
+async function listVideoChannelInvites (req: express.Request, res: express.Response) {
+  const channel = res.locals.videoChannel
+
+  const invites = await VideoChannelInviteModel.listForChannel(channel.id)
+
+  return res.json({
+    total: invites.length,
+    data: invites.map(i => formatInvite(i))
+  })
+}
+
+async function createVideoChannelInvite (req: express.Request, res: express.Response) {
+  const channel = res.locals.videoChannel
+  const body = req.body as { maxUses?: number | null, expiresAt?: string | null }
+
+  const invite = await VideoChannelInviteModel.create({
+    code: VideoChannelInviteModel.generateCode(),
+    channelId: channel.id,
+    maxUses: body.maxUses ?? null,
+    expiresAt: body.expiresAt ? new Date(body.expiresAt) : null
+  })
+
+  logger.info('Invite link created for channel %s.', channel.Actor.url)
+
+  return res.json(formatInvite(invite))
+}
+
+async function removeVideoChannelInvite (req: express.Request, res: express.Response) {
+  const invite = res.locals.videoChannelInvite
+
+  await invite.destroy()
+
+  return res.sendStatus(HttpStatusCode.NO_CONTENT_204)
 }

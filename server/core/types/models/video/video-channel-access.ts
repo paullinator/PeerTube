@@ -1,6 +1,7 @@
 import { PickWith } from '@peertube/peertube-typescript-utils'
 import { VideoChannelAccessModel } from '@server/models/video/video-channel-access.js'
 import { VideoChannelAllowedAccountModel } from '@server/models/video/video-channel-allowed-account.js'
+import { VideoChannelInviteModel } from '@server/models/video/video-channel-invite.js'
 import { VideoChannelPasswordModel } from '@server/models/video/video-channel-password.js'
 import { MAccountDefault } from '../account/account.js'
 
@@ -22,3 +23,7 @@ export type MChannelAllowedAccountBase = Omit<VideoChannelAllowedAccountModel, '
 export type MChannelAllowedAccount =
   & MChannelAllowedAccountBase
   & UseAllowed<'Account', MAccountDefault>
+
+// ############################################################################
+
+export type MChannelInvite = Omit<VideoChannelInviteModel, 'VideoChannel'>

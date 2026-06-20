@@ -9,6 +9,9 @@ import {
   VideoChannelActivity,
   VideoChannelCreate,
   VideoChannelCreateResult,
+  VideoChannelInviteInfo,
+  VideoChannelInviteRedeemResult,
+  VideoChannelInviteWithURL,
   VideoChannelUpdate,
   VideosImportInChannelCreate
 } from '@peertube/peertube-models'
@@ -321,6 +324,93 @@ export class ChannelsCommand extends AbstractCommand {
       path,
       fields: { password: options.password },
       implicitToken: false,
+      defaultExpectedStatus: HttpStatusCode.OK_200
+    }))
+  }
+
+  // ---------------------------------------------------------------------------
+  // Channel invite links
+
+  listInvites (
+    options: OverrideCommandOptions & {
+      channelName: string
+    }
+  ) {
+    const path = '/api/v1/video-channels/' + options.channelName + '/invites'
+
+    return this.getRequestBody<ResultList<VideoChannelInviteWithURL>>({
+      ...options,
+
+      path,
+      implicitToken: true,
+      defaultExpectedStatus: HttpStatusCode.OK_200
+    })
+  }
+
+  createInvite (
+    options: OverrideCommandOptions & {
+      channelName: string
+      maxUses?: number
+      expiresAt?: string
+    }
+  ) {
+    const path = '/api/v1/video-channels/' + options.channelName + '/invites'
+
+    return unwrapBody<VideoChannelInviteWithURL>(this.postBodyRequest({
+      ...options,
+
+      path,
+      fields: pick(options, [ 'maxUses', 'expiresAt' ]),
+      implicitToken: true,
+      defaultExpectedStatus: HttpStatusCode.OK_200
+    }))
+  }
+
+  removeInvite (
+    options: OverrideCommandOptions & {
+      channelName: string
+      inviteId: number
+    }
+  ) {
+    const path = '/api/v1/video-channels/' + options.channelName + '/invites/' + options.inviteId
+
+    return this.deleteRequest({
+      ...options,
+
+      path,
+      implicitToken: true,
+      defaultExpectedStatus: HttpStatusCode.NO_CONTENT_204
+    })
+  }
+
+  getInviteInfo (
+    options: OverrideCommandOptions & {
+      code: string
+    }
+  ) {
+    const path = '/api/v1/video-channel-invites/' + options.code
+
+    return this.getRequestBody<VideoChannelInviteInfo>({
+      ...options,
+
+      path,
+      implicitToken: false,
+      defaultExpectedStatus: HttpStatusCode.OK_200
+    })
+  }
+
+  redeemInvite (
+    options: OverrideCommandOptions & {
+      code: string
+    }
+  ) {
+    const path = '/api/v1/video-channel-invites/' + options.code + '/redeem'
+
+    return unwrapBody<VideoChannelInviteRedeemResult>(this.postBodyRequest({
+      ...options,
+
+      path,
+      implicitToken: true,
       defaultExpectedStatus: HttpStatusCode.OK_200
     }))
   }

@@ -26,6 +26,7 @@ import { VideoChannelCollaboratorModel } from '@server/models/video/video-channe
 import { VideoChannelAccessModel } from '@server/models/video/video-channel-access.js'
 import { VideoChannelPasswordModel } from '@server/models/video/video-channel-password.js'
 import { VideoChannelAllowedAccountModel } from '@server/models/video/video-channel-allowed-account.js'
+import { VideoChannelInviteModel } from '@server/models/video/video-channel-invite.js'
 import { VideoChannelSyncModel } from '@server/models/video/video-channel-sync.js'
 import { VideoChapterModel } from '@server/models/video/video-chapter.js'
 import { VideoEmbedPrivacyDomainModel } from '@server/models/video/video-embed-privacy-domain.js'
@@ -218,6 +219,7 @@ export async function initDatabaseModels (silent: boolean) {
     VideoChannelAccessModel,
     VideoChannelPasswordModel,
     VideoChannelAllowedAccountModel,
+    VideoChannelInviteModel,
     ActorReservedModel,
     VideoEmbedPrivacyDomainModel
   ])

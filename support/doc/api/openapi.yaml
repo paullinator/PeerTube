@@ -5607,6 +5607,137 @@ paths:
                   success:
                     type: boolean
 
+  '/api/v1/video-channels/{channelHandle}/invites':
+    get:
+      summary: List channel invite links
+      operationId: listVideoChannelInvites
+      security:
+        - OAuth2: []
+      tags:
+        - Video Channels
+      parameters:
+        - $ref: '#/components/parameters/channelHandle'
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  total:
+                    type: integer
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/VideoChannelInvite'
+    post:
+      summary: Create a channel invite link
+      description: Create a reusable invite link that grants access to the channel and can enable sign-up
+      operationId: createVideoChannelInvite
+      security:
+        - OAuth2: []
+      tags:
+        - Video Channels
+      parameters:
+        - $ref: '#/components/parameters/channelHandle'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                maxUses:
+                  type: integer
+                  nullable: true
+                  description: Maximum number of uses, or null for unlimited
+                expiresAt:
+                  type: string
+                  format: date-time
+                  nullable: true
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VideoChannelInvite'
+
+  '/api/v1/video-channels/{channelHandle}/invites/{inviteId}':
+    delete:
+      summary: Revoke a channel invite link
+      operationId: removeVideoChannelInvite
+      security:
+        - OAuth2: []
+      tags:
+        - Video Channels
+      parameters:
+        - $ref: '#/components/parameters/channelHandle'
+        - name: inviteId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: successful operation
+
+  '/api/v1/video-channel-invites/{code}':
+    get:
+      summary: Get public info about a channel invite
+      operationId: getVideoChannelInviteInfo
+      tags:
+        - Video Channels
+      parameters:
+        - name: code
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  valid:
+                    type: boolean
+                  channel:
+                    type: object
+                    properties:
+                      name:
+                        type: string
+                      displayName:
+                        type: string
+
+  '/api/v1/video-channel-invites/{code}/redeem':
+    post:
+      summary: Redeem a channel invite
+      description: Grant the authenticated account access to the channel referenced by the invite code
+      operationId: redeemVideoChannelInvite
+      security:
+        - OAuth2: []
+      tags:
+        - Video Channels
+      parameters:
+        - name: code
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  channelHandle:
+                    type: string
+
   '/api/v1/video-channel-syncs':
     post:
       summary: Create a synchronization for a video channel
@@ -12624,6 +12755,11 @@ components:
               $ref: '#/components/schemas/usernameChannel'
             displayName:
               type: string
+        channelInviteCode:
+          type: string
+          description: >-
+            Optional channel invite code. When valid, allows sign-up even if public registration
+            is disabled and grants the new account access to the channel.
       required:
         - username
         - password
@@ -13930,6 +14066,27 @@ components:
           type: array
           items:
             type: string
+
+    VideoChannelInvite:
+      properties:
+        id:
+          type: integer
+        code:
+          type: string
+        channelId:
+          type: integer
+        maxUses:
+          type: integer
+          nullable: true
+        uses:
+          type: integer
+        expiresAt:
+          type: string
+          format: date-time
+          nullable: true
+        url:
+          type: string
+          description: Shareable invite URL
 
     VideoEmbedPrivacy:
       type: integer

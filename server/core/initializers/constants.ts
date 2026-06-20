@@ -62,7 +62,7 @@ import { CONFIG, registerConfigChangedHandler } from './config.js'
 
 // ---------------------------------------------------------------------------
 
-export const LAST_MIGRATION_VERSION = 1045
+export const LAST_MIGRATION_VERSION = 1046
 
 // ---------------------------------------------------------------------------
 
@@ -1211,6 +1211,11 @@ export const CHANNEL_ACCESS = {
   COOKIE_PREFIX: 'peertube-channel-access-',
   // How long an issued channel access token (and the cookie storing it) stays valid
   TOKEN_LIFETIME: 1000 * 3600 * 24 * 30 // 30 days
+}
+
+export const CHANNEL_INVITE = {
+  // Length of the random invite code (hex chars)
+  CODE_LENGTH: 24
 }
 
 export const OTP = {

@@ -20,6 +20,7 @@ import { runnersRouter } from './runners/index.js'
 import { searchRouter } from './search/index.js'
 import { serverRouter } from './server/index.js'
 import { usersRouter } from './users/index.js'
+import { videoChannelInvitesRouter } from './video-channel-invites.js'
 import { videoChannelSyncRouter } from './video-channel-sync.js'
 import { videoChannelRouter } from './video-channels/index.js'
 import { videoPlaylistRouter } from './video-playlist.js'
@@ -42,6 +43,7 @@ apiRouter.use('/config', configRouter)
 apiRouter.use('/users', usersRouter)
 apiRouter.use('/accounts', accountsRouter)
 apiRouter.use('/video-channels', videoChannelRouter)
+apiRouter.use('/video-channel-invites', videoChannelInvitesRouter)
 apiRouter.use('/video-channel-syncs', videoChannelSyncRouter)
 apiRouter.use('/video-playlists', videoPlaylistRouter)
 apiRouter.use('/videos', videosRouter)

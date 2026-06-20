@@ -15,6 +15,7 @@ import {
   MActorUrl,
   MChannelBannerAccountDefault,
   MChannelCollaboratorAccount,
+  MChannelInvite,
   MChannelSyncChannel,
   MLocalVideoViewerWithWatchSections,
   MRegistration,
@@ -193,6 +194,9 @@ declare module 'express' {
 
       // Resolved local account ids for channel access allow-list updates
       allowedAccountIds?: number[]
+
+      // Channel invite resolved from a :code param or a signup channelInviteCode
+      videoChannelInvite?: MChannelInvite
 
       videoPlaylistFull?: MVideoPlaylistFull
       videoPlaylistSummary?: MVideoPlaylistFullSummary

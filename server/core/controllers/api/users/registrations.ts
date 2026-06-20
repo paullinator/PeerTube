@@ -8,9 +8,11 @@ import {
   UserRegistrationUpdateState,
   UserRight
 } from '@peertube/peertube-models'
+import { sequelizeTypescript } from '@server/initializers/database.js'
 import { Emailer } from '@server/lib/emailer.js'
 import { Hooks } from '@server/lib/plugins/hooks.js'
 import { UserRegistrationModel } from '@server/models/user/user-registration.js'
+import { VideoChannelAllowedAccountModel } from '@server/models/video/video-channel-allowed-account.js'
 import express from 'express'
 import { auditLoggerFactory, UserAuditView } from '../../../helpers/audit-logger.js'
 import { logger } from '../../../helpers/logger.js'
@@ -34,6 +36,7 @@ import {
   ensureUserRegistrationAllowedForIP,
   getRegistrationValidator,
   listRegistrationsValidator,
+  loadOptionalChannelInviteForSignup,
   paginationValidator,
   setDefaultPagination,
   setDefaultSort,
@@ -99,6 +102,7 @@ registrationsRouter.get(
 registrationsRouter.post(
   '/register',
   registrationRateLimiter,
+  asyncMiddleware(loadOptionalChannelInviteForSignup),
   asyncMiddleware(determineSignupMode),
   asyncMiddleware(ensureUserRegistrationAllowedFactory()),
   ensureUserRegistrationAllowedForIP,
@@ -259,6 +263,17 @@ async function registerUser (req: express.Request, res: express.Response) {
 
   auditLogger.create(body.username, new UserAuditView(user.toFormattedJSON()))
   logger.info('User %s with its channel and account registered.', body.username)
+
+  // A valid channel invite grants the freshly created account access to the channel
+  const invite = res.locals.videoChannelInvite
+  if (invite) {
+    await sequelizeTypescript.transaction(async t => {
+      await VideoChannelAllowedAccountModel.add(invite.channelId, account.id, t)
+      await invite.incrementUses(t)
+    })
+
+    logger.info('Granted channel %d access to invited user %s.', invite.channelId, body.username)
+  }
 
   if (CONFIG.SIGNUP.REQUIRES_EMAIL_VERIFICATION) {
     await sendVerifyRegistrationEmail(user)

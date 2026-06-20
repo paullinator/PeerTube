@@ -108,6 +108,54 @@
         </div>
       </div>
     </div>
+
+    <div class="pt-two-cols mt-4">
+      <div class="title-col">
+        <h3 i18n>INVITE LINKS</h3>
+      </div>
+
+      <div class="content-col">
+        <p i18n>
+          Share an invite link to grant access to this channel. Anyone with the link can create an account
+          (even if sign-up is disabled) or, if already logged in, get instant access.
+        </p>
+
+        <div class="entry-list">
+          @for (invite of invites; track invite.id) {
+            <div class="entry-block">
+              <span class="entry-label">{{ invite.url }}</span>
+
+              <span class="invite-meta">
+                <ng-container i18n>Uses: {{ inviteUsesLabel(invite) }}</ng-container>
+                @if (invite.expiresAt) {
+                  <ng-container i18n>· Expires {{ invite.expiresAt | date }}</ng-container>
+                }
+              </span>
+
+              <my-copy-button [value]="invite.url" i18n-notification notification="Invite link copied" i18n-title title="Copy link"></my-copy-button>
+
+              <my-button theme="tertiary" icon="delete" (click)="removeInvite(invite)" i18n-title title="Revoke"></my-button>
+            </div>
+          } @empty {
+            <div i18n>No invite links yet</div>
+          }
+        </div>
+
+        <div class="mt-3 d-flex flex-wrap gap-3 align-items-end">
+          <div>
+            <label for="inviteMaxUses" i18n>Max uses (optional)</label>
+            <input type="number" min="1" id="inviteMaxUses" class="form-control" [(ngModel)]="newInviteMaxUses">
+          </div>
+
+          <div>
+            <label for="inviteExpiresAt" i18n>Expires at (optional)</label>
+            <input type="date" id="inviteExpiresAt" class="form-control" [(ngModel)]="newInviteExpiresAt">
+          </div>
+
+          <my-button theme="secondary" (click)="createInvite()" i18n>Generate invite link</my-button>
+        </div>
+      </div>
+    </div>
   }
 
   <div class="pt-two-cols mt-4">
