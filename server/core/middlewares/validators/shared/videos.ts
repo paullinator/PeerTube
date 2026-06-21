@@ -109,7 +109,9 @@ export async function checkCanSeeVideo (options: {
     return checkCanSeePasswordProtectedVideo({ req, res, video, hasVideoFileToken: !!videoFileToken })
   }
 
-  if (video.privacy === VideoPrivacy.UNLISTED || video.privacy === VideoPrivacy.PUBLIC) {
+  // CHANNEL is discoverable like PUBLIC at the metadata level; the channel access gate is
+  // enforced on the playback / static-file path (checkCanAccessVideoStaticFiles) and on token minting.
+  if (video.privacy === VideoPrivacy.UNLISTED || video.privacy === VideoPrivacy.PUBLIC || video.privacy === VideoPrivacy.CHANNEL) {
     return true
   }
 

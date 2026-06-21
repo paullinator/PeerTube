@@ -2365,7 +2365,13 @@ export class VideoModel extends SequelizeModel<VideoModel> {
       return false
     }
 
-    if (this.privacy === VideoPrivacy.PUBLIC || this.privacy === VideoPrivacy.PASSWORD_PROTECTED) {
+    // CHANNEL behaves like PUBLIC for metadata: discoverable without auth. Playback is gated
+    // separately by the channel access check on the static-file / token path.
+    if (
+      this.privacy === VideoPrivacy.PUBLIC ||
+      this.privacy === VideoPrivacy.PASSWORD_PROTECTED ||
+      this.privacy === VideoPrivacy.CHANNEL
+    ) {
       return false
     }
 

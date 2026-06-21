@@ -14,7 +14,13 @@ export const videoFileTokenValidator = [
     // / CHANNEL_ACCESS_DENIED otherwise so the client can prompt at playback time.
     if (!await checkCanSeeVideoChannelGate({ req, res, video, hasVideoFileToken: false })) return
 
-    if (video.privacy !== VideoPrivacy.PASSWORD_PROTECTED && !exists(getAuthUser(res))) {
+    // CHANNEL-privacy videos always require a token but are authorized purely by the channel gate
+    // above (public channel => anyone, restricted => proven access), so anonymous minting is allowed.
+    if (
+      video.privacy !== VideoPrivacy.PASSWORD_PROTECTED &&
+      video.privacy !== VideoPrivacy.CHANNEL &&
+      !exists(getAuthUser(res))
+    ) {
       // Anonymous viewers that proved restricted-channel access (above) are allowed to mint
       // a file token for the channel's videos; everyone else must be authenticated.
       if (!await VideoChannelAccessModel.isRestricted(video.channelId)) {

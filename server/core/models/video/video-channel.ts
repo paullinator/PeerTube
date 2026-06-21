@@ -399,7 +399,10 @@ export class VideoChannelModel extends SequelizeModel<VideoChannelModel> {
       ],
       where: {
         [Op.and]: [
-          literal(`EXISTS (SELECT 1 FROM "video" WHERE "privacy" = ${VideoPrivacy.PUBLIC} AND "channelId" = "VideoChannelModel"."id")`)
+          literal(
+            `EXISTS (SELECT 1 FROM "video" ` +
+            `WHERE "privacy" IN (${VideoPrivacy.PUBLIC}, ${VideoPrivacy.CHANNEL}) AND "channelId" = "VideoChannelModel"."id")`
+          )
         ]
       }
     }

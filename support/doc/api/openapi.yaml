@@ -9955,6 +9955,7 @@ components:
         - 3
         - 4
         - 5
+        - 6
       description: privacy id of the video (see [/videos/privacies](#operation/getVideoPrivacyPolicies))
     VideoPrivacyConstant:
       properties:
