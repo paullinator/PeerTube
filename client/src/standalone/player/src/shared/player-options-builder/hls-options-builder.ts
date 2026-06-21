@@ -1,4 +1,4 @@
-import { exists, getResolutionAndFPSLabel, getResolutionLabel, timeToInt } from '@peertube/peertube-core-utils'
+import { addQueryParams, exists, getResolutionAndFPSLabel, getResolutionLabel, timeToInt } from '@peertube/peertube-core-utils'
 import { LiveVideoLatencyMode } from '@peertube/peertube-models'
 import { logger } from '@root-helpers/logger'
 import { peertubeLocalStorage } from '@root-helpers/peertube-web-storage'
@@ -47,13 +47,28 @@ export class HLSOptionsBuilder {
       logger.info('No segmentsSha256Url found. Disabling P2P & redundancy.')
     }
 
+    // Token-only auth (e.g. CHANNEL privacy): the HLS files are not gated by an Authorization or
+    // password header but by a videoFileToken query param, so anonymous viewers that proved channel
+    // access can still play. Append the token to the master playlist (asking the server to reinject
+    // it into child playlist/segment URLs) and to the sha256 segments URL.
+    const videoFileToken = this.options.videoFileToken?.()
+    const useVideoFileTokenQuery = !this.options.requiresUserAuth && !this.options.requiresPassword && !!videoFileToken
+
+    const playlistUrl = useVideoFileTokenQuery
+      ? addQueryParams(this.options.hls.playlistUrl, { videoFileToken, reinjectVideoFileToken: 'true' })
+      : this.options.hls.playlistUrl
+
+    const sha256Url = useVideoFileTokenQuery && segmentsSha256Url
+      ? addQueryParams(segmentsSha256Url, { videoFileToken })
+      : segmentsSha256Url
+
     const redundancyUrlManager = segmentsSha256Url
       ? new RedundancyUrlManager(this.options.hls.redundancyBaseUrls)
       : null
 
     const segmentValidator = segmentsSha256Url
       ? new SegmentValidator({
-        segmentsSha256Url,
+        segmentsSha256Url: sha256Url,
         authorizationHeader: this.options.authorizationHeader,
         requiresUserAuth: this.options.requiresUserAuth,
         serverUrl: this.options.serverUrl,
@@ -75,7 +90,7 @@ export class HLSOptionsBuilder {
 
       redundancyUrlManager,
       type: 'application/x-mpegURL',
-      src: this.options.hls.playlistUrl,
+      src: playlistUrl,
       segmentValidator
     }
 
