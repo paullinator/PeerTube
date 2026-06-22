@@ -1,4 +1,4 @@
-import { randomBytes } from 'crypto'
+import { randomInt } from 'crypto'
 import { MChannelInvite } from '@server/types/models/index.js'
 import { Op, Transaction } from 'sequelize'
 import { AllowNull, BelongsTo, Column, CreatedAt, Default, ForeignKey, Table, UpdatedAt } from 'sequelize-typescript'
@@ -56,8 +56,28 @@ export class VideoChannelInviteModel extends SequelizeModel<VideoChannelInviteMo
   })
   declare VideoChannel: Awaited<VideoChannelModel>
 
+  // Bitcoin-style base58 alphabet (no 0, O, I, l to avoid visual ambiguity in short codes)
+  private static readonly BASE58_ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'
+
   static generateCode () {
-    return randomBytes(CHANNEL_INVITE.CODE_LENGTH).toString('base64url').slice(0, CHANNEL_INVITE.CODE_LENGTH)
+    let code = ''
+
+    for (let i = 0; i < CHANNEL_INVITE.CODE_LENGTH; i++) {
+      code += this.BASE58_ALPHABET[randomInt(this.BASE58_ALPHABET.length)]
+    }
+
+    return code
+  }
+
+  // Short codes can collide, so retry against the UNIQUE code column a few times
+  static async generateUniqueCode () {
+    for (let i = 0; i < 10; i++) {
+      const code = this.generateCode()
+
+      if (!await this.loadByCode(code)) return code
+    }
+
+    throw new Error('Could not generate a unique channel invite code')
   }
 
   static loadByCode (code: string, transaction?: Transaction): Promise<MChannelInvite> {

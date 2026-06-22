@@ -1221,8 +1221,8 @@ export const CHANNEL_ACCESS = {
 }
 
 export const CHANNEL_INVITE = {
-  // Length of the random invite code (hex chars)
-  CODE_LENGTH: 24
+  // Length of the random invite code (base58 chars). 58^6 ~= 38 billion combinations.
+  CODE_LENGTH: 6
 }
 
 export const OTP = {

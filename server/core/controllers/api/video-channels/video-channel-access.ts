@@ -212,7 +212,7 @@ function formatInvite (invite: { id: number, code: string, channelId: number, ma
     maxUses: invite.maxUses ?? null,
     uses: invite.uses,
     expiresAt: invite.expiresAt ?? null,
-    url: WEBSERVER.URL + '/video-channels/invite/' + invite.code
+    url: WEBSERVER.URL + '/i/' + invite.code
   }
 }
 
@@ -232,7 +232,7 @@ async function createVideoChannelInvite (req: express.Request, res: express.Resp
   const body = req.body as { maxUses?: number | null, expiresAt?: string | null }
 
   const invite = await VideoChannelInviteModel.create({
-    code: VideoChannelInviteModel.generateCode(),
+    code: await VideoChannelInviteModel.generateUniqueCode(),
     channelId: channel.id,
     maxUses: body.maxUses ?? null,
     expiresAt: body.expiresAt ? new Date(body.expiresAt) : null
