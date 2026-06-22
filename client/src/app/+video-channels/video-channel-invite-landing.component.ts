@@ -60,7 +60,8 @@ export class VideoChannelInviteLandingComponent implements OnInit {
   }
 
   goToLogin () {
-    this.router.navigate([ '/login' ])
+    // The code is also kept in sessionStorage, but pass it along so a direct login (incl. OAuth) can redeem it
+    this.router.navigate([ '/login' ], { queryParams: { channelInviteCode: this.code } })
   }
 
   private redeem () {

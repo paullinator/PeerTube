@@ -130,6 +130,12 @@ export class LoginComponent extends FormReactive implements OnInit, AfterViewIni
 
     this.serverConfig = snapshot.data.serverConfig
 
+    // Preserve an invite code (e.g. arriving from an invite link) so it survives the external-auth
+    // (OAuth) round-trip, which returns to this component in the same tab, and can be redeemed after login
+    if (snapshot.queryParams.channelInviteCode) {
+      sessionStorage.setItem('channel-invite-code', snapshot.queryParams.channelInviteCode)
+    }
+
     if (snapshot.queryParams.externalAuthToken) {
       this.loadExternalAuthToken(snapshot.queryParams.username, snapshot.queryParams.externalAuthToken)
       return
@@ -179,7 +185,11 @@ export class LoginComponent extends FormReactive implements OnInit, AfterViewIni
         switchMap(() => this.updateUserLanguageIfNeeded())
       )
       .subscribe({
-        next: () => this.redirectService.redirectToPreviousRoute({ reloadTab: this.shouldReloadTabOnLogin() }),
+        next: () => {
+          if (this.redeemPendingChannelInvite()) return
+
+          this.redirectService.redirectToPreviousRoute({ reloadTab: this.shouldReloadTabOnLogin() })
+        },
 
         error: err => {
           this.handleError(err)
@@ -224,6 +234,9 @@ The link will expire within 1 hour.`
       )
       .subscribe({
         next: () => {
+          // A pending channel invite takes priority: route through the landing so it gets redeemed
+          if (this.redeemPendingChannelInvite()) return
+
           const redirectUrl = this.storage.getItem(LoginComponent.SESSION_STORAGE_REDIRECT_URL_KEY)
           if (redirectUrl) {
             this.storage.removeItem(LoginComponent.SESSION_STORAGE_REDIRECT_URL_KEY)
@@ -283,6 +296,18 @@ The link will expire within 1 hour.`
     }
 
     this.error = err.message
+  }
+
+  // Returns true when a pending channel invite was found and the post-login navigation was handled
+  // by routing through the invite landing (which redeems it once the user is authenticated)
+  private redeemPendingChannelInvite () {
+    const inviteCode = sessionStorage.getItem('channel-invite-code')
+    if (!inviteCode) return false
+
+    sessionStorage.removeItem('channel-invite-code')
+    this.router.navigate([ '/video-channels/invite', inviteCode ])
+
+    return true
   }
 
   private shouldReloadTabOnLogin () {
