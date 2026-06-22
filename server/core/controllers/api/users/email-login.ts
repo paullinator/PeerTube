@@ -47,13 +47,14 @@ export {
 
 async function requestEmailLogin (req: express.Request, res: express.Response) {
   const email = (req.body.email as string).toLowerCase()
+  const channelInviteCode = req.body.channelInviteCode as string | undefined
 
   const { verificationString, otp } = await Redis.Instance.setEmailLoginVerification(email)
 
   Emailer.Instance.addEmailLoginJob({
     to: email,
     language: CONFIG.INSTANCE.DEFAULT_LANGUAGE,
-    loginUrl: getEmailLoginUrl(email, verificationString),
+    loginUrl: getEmailLoginUrl(email, verificationString, channelInviteCode),
     otp
   })
 

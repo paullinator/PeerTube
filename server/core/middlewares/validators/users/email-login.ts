@@ -21,6 +21,11 @@ const emailLoginRequestValidator = [
   body('email')
     .isEmail().withMessage('Should have a valid email'),
 
+  // Carried through to the magic-link URL so an invite signup is still redeemed after login
+  body('channelInviteCode')
+    .optional()
+    .isString().notEmpty().withMessage('Should have a valid channel invite code'),
+
   (req: express.Request, res: express.Response, next: express.NextFunction) => {
     if (areValidationErrors(req, res)) return
 

@@ -62,7 +62,11 @@ export class EmailLoginComponent implements OnInit {
     this.error = null
     this.loading = true
 
-    this.authService.emailLoginRequest(this.email)
+    // Forward any pending invite code so the magic link carries it (the link opens a fresh
+    // tab without this tab's sessionStorage, so it must travel through the URL)
+    const channelInviteCode = sessionStorage.getItem('channel-invite-code') || undefined
+
+    this.authService.emailLoginRequest(this.email, channelInviteCode)
       .subscribe({
         next: () => {
           this.loading = false

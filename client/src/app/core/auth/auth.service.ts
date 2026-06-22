@@ -182,8 +182,11 @@ Ensure you have correctly configured PeerTube (config/ directory), in particular
   }
 
   // Passwordless email login: ask the server to send a magic link + OTP to the email
-  emailLoginRequest (email: string) {
-    return this.http.post<void>(AuthService.BASE_EMAIL_LOGIN_URL + '/request', { email })
+  emailLoginRequest (email: string, channelInviteCode?: string) {
+    const body: { email: string, channelInviteCode?: string } = { email }
+    if (channelInviteCode) body.channelInviteCode = channelInviteCode
+
+    return this.http.post<void>(AuthService.BASE_EMAIL_LOGIN_URL + '/request', body)
       .pipe(catchError(res => this.restExtractor.handleError(res)))
   }
 

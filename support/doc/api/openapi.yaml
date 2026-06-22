@@ -1892,6 +1892,11 @@ paths:
                 email:
                   type: string
                   description: Email to send the login link/code to
+                channelInviteCode:
+                  type: string
+                  description: >-
+                    Optional channel invite code to embed in the magic link so the invite is redeemed
+                    once the login completes
               required:
                 - email
       responses:

@@ -31,8 +31,13 @@ export function getResetPasswordUrl (user: MUserId, verificationString: string) 
   return WEBSERVER.URL + '/reset-password?userId=' + user.id + '&verificationString=' + verificationString
 }
 
-export function getEmailLoginUrl (email: string, verificationString: string) {
-  return WEBSERVER.URL + '/login/email?email=' + encodeURIComponent(email) + '&verificationString=' + verificationString
+export function getEmailLoginUrl (email: string, verificationString: string, channelInviteCode?: string) {
+  let url = WEBSERVER.URL + '/login/email?email=' + encodeURIComponent(email) + '&verificationString=' + verificationString
+
+  // So the magic link (opened in a fresh tab without the original sessionStorage) still redeems the invite
+  if (channelInviteCode) url += '&channelInviteCode=' + encodeURIComponent(channelInviteCode)
+
+  return url
 }
 
 export function getPluginUrl (pluginType: PluginType_Type) {
