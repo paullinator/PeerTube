@@ -136,6 +136,10 @@ async function createEmailLoginUser (email: string): Promise<MUserDefault> {
     emailVerified: true
   })
 
+  // Simplified (email-only) signup: keep onboarding frictionless by not prompting the
+  // freshly created account to set up an avatar/description.
+  userToCreate.noAccountSetupWarningModal = true
+
   const { user } = await createUserAccountAndChannelAndPlaylist({
     userToCreate,
     userDisplayName: username
