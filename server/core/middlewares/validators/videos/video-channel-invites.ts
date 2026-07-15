@@ -5,7 +5,13 @@ import express from 'express'
 import { body, param } from 'express-validator'
 import { areValidationErrors } from '../shared/index.js'
 
+// The client always supplies the code (random base58 or a user-chosen Link ID); we only check its format here.
+// The 8-char minimum for user-chosen Link IDs is enforced client-side; the server accepts any alphanumeric code.
 export const createVideoChannelInviteValidator = [
+  body('code')
+    .matches(/^[A-Za-z0-9]{1,255}$/)
+    .withMessage('Should have a valid code (letters and digits only)'),
+
   body('maxUses')
     .optional({ nullable: true })
     .customSanitizer(toIntOrNull)
@@ -17,11 +23,18 @@ export const createVideoChannelInviteValidator = [
     .custom(value => value === null || isDateValid(value))
     .withMessage('Should have a valid expiresAt date or null'),
 
-  (req: express.Request, res: express.Response, next: express.NextFunction) => {
+  async (req: express.Request, res: express.Response, next: express.NextFunction) => {
     if (areValidationErrors(req, res)) return
 
     if (req.body.expiresAt && new Date(req.body.expiresAt).getTime() <= Date.now()) {
       return res.fail({ message: 'expiresAt must be in the future' })
+    }
+
+    if (await VideoChannelInviteModel.loadByCode(req.body.code)) {
+      return res.fail({
+        status: HttpStatusCode.CONFLICT_409,
+        message: 'This Link ID is already in use'
+      })
     }
 
     return next()

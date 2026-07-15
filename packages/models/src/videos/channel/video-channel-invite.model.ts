@@ -27,7 +27,10 @@ export interface VideoChannelInviteWithURL {
 }
 
 // Sent by a channel manager creating an invite (POST /:handle/invites)
+// The client always supplies the code (random base58 or a user-chosen Link ID);
+// the server only validates its format and rejects collisions.
 export interface VideoChannelInviteCreate {
+  code: string
   maxUses?: number | null
   expiresAt?: Date | string | null
 }

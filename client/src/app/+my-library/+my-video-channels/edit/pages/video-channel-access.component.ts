@@ -53,6 +53,12 @@ export class VideoChannelAccessComponent implements OnInit {
   newInviteMaxUses: number = null
   newInviteExpiresAt: string = null
 
+  newCustomInviteMaxUses: number = null
+  newCustomInviteExpiresAt: string = null
+  newCustomInviteCode = ''
+
+  static readonly CUSTOM_CODE_MIN_LENGTH = 8
+
   loaded = false
 
   ngOnInit () {
@@ -156,8 +162,28 @@ export class VideoChannelAccessComponent implements OnInit {
       })
   }
 
+  // Bitcoin-style base58 alphabet (no 0, O, I, l to avoid visual ambiguity in short codes)
+  private static readonly BASE58_ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'
+  private static readonly RANDOM_CODE_LENGTH = 6
+
+  private generateRandomCode () {
+    const alphabet = VideoChannelAccessComponent.BASE58_ALPHABET
+    const length = VideoChannelAccessComponent.RANDOM_CODE_LENGTH
+
+    const values = new Uint32Array(length)
+    crypto.getRandomValues(values)
+
+    let code = ''
+    for (let i = 0; i < length; i++) {
+      code += alphabet[values[i] % alphabet.length]
+    }
+
+    return code
+  }
+
   createInvite () {
     this.channelService.createChannelInvite(this.channelName, {
+      code: this.generateRandomCode(),
       maxUses: this.newInviteMaxUses || null,
       expiresAt: this.newInviteExpiresAt || null
     }).subscribe({
@@ -166,6 +192,31 @@ export class VideoChannelAccessComponent implements OnInit {
         this.newInviteMaxUses = null
         this.newInviteExpiresAt = null
         this.notifier.success($localize`Invite link created`)
+      },
+
+      error: err => this.notifier.handleError(err)
+    })
+  }
+
+  createCustomInvite () {
+    const code = this.newCustomInviteCode?.trim()
+
+    if (!code || code.length < VideoChannelAccessComponent.CUSTOM_CODE_MIN_LENGTH || !/^[A-Za-z0-9]+$/.test(code)) {
+      this.notifier.error($localize`The Link ID must have at least 8 characters and only contain letters and digits`)
+      return
+    }
+
+    this.channelService.createChannelInvite(this.channelName, {
+      code,
+      maxUses: this.newCustomInviteMaxUses || null,
+      expiresAt: this.newCustomInviteExpiresAt || null
+    }).subscribe({
+      next: invite => {
+        this.invites.unshift(invite)
+        this.newCustomInviteMaxUses = null
+        this.newCustomInviteExpiresAt = null
+        this.newCustomInviteCode = ''
+        this.notifier.success($localize`Custom invite link created`)
       },
 
       error: err => this.notifier.handleError(err)

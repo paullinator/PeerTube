@@ -5726,7 +5726,15 @@ paths:
           application/json:
             schema:
               type: object
+              required:
+                - code
               properties:
+                code:
+                  type: string
+                  pattern: '^[A-Za-z0-9]{1,255}$'
+                  description: >-
+                    The invite code, always supplied by the client (a random base58 code or a user-chosen Link ID
+                    of at least 8 alphanumeric characters). The server rejects collisions with a 409.
                 maxUses:
                   type: integer
                   nullable: true
@@ -5742,6 +5750,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/VideoChannelInvite'
+        '409':
+          description: the code is already in use
 
   '/api/v1/video-channels/{channelHandle}/invites/{inviteId}':
     delete:

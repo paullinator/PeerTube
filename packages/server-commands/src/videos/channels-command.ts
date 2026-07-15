@@ -350,17 +350,24 @@ export class ChannelsCommand extends AbstractCommand {
   createInvite (
     options: OverrideCommandOptions & {
       channelName: string
+      code?: string
       maxUses?: number
       expiresAt?: string
     }
   ) {
     const path = '/api/v1/video-channels/' + options.channelName + '/invites'
 
+    // The client always supplies the code; generate a random alphanumeric one when the caller does not provide it
+    const fields = {
+      code: options.code ?? 'invite' + Math.random().toString(36).slice(2, 10),
+      ...pick(options, [ 'maxUses', 'expiresAt' ])
+    }
+
     return unwrapBody<VideoChannelInviteWithURL>(this.postBodyRequest({
       ...options,
 
       path,
-      fields: pick(options, [ 'maxUses', 'expiresAt' ]),
+      fields,
       implicitToken: true,
       defaultExpectedStatus: HttpStatusCode.OK_200
     }))

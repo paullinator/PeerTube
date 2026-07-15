@@ -35,16 +35,37 @@ describe('Test channel invite links', function () {
   let code: string
   let inviteId: number
 
-  it('Should create an invite link', async function () {
-    const invite = await server.channels.createInvite({ channelName, maxUses: 2 })
+  it('Should create an invite link with a client-supplied code', async function () {
+    code = 'clientcode1'
 
-    expect(invite.code).to.have.length.above(0)
+    const invite = await server.channels.createInvite({ channelName, code, maxUses: 2 })
+
+    expect(invite.code).to.equal(code)
     expect(invite.uses).to.equal(0)
     expect(invite.maxUses).to.equal(2)
-    expect(invite.url).to.contain('/video-channels/invite/')
+    expect(invite.url).to.contain(code)
 
-    code = invite.code
     inviteId = invite.id
+  })
+
+  it('Should create an invite link with a custom alphanumeric Link ID', async function () {
+    const customCode = 'MyCustomLinkID42'
+
+    const invite = await server.channels.createInvite({ channelName, code: customCode })
+
+    expect(invite.code).to.equal(customCode)
+    expect(invite.url).to.contain(customCode)
+
+    await server.channels.removeInvite({ channelName, inviteId: invite.id })
+  })
+
+  it('Should reject creating an invite with a duplicate code', async function () {
+    await server.channels.createInvite({ channelName, code, expectedStatus: HttpStatusCode.CONFLICT_409 })
+  })
+
+  it('Should reject creating an invite with an invalid code', async function () {
+    // Non-alphanumeric characters are rejected
+    await server.channels.createInvite({ channelName, code: 'bad code!', expectedStatus: HttpStatusCode.BAD_REQUEST_400 })
   })
 
   it('Should list invite links', async function () {

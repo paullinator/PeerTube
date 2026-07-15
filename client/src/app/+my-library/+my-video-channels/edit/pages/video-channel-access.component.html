@@ -154,6 +154,25 @@
 
           <my-button theme="secondary" (click)="createInvite()" i18n>Generate invite link</my-button>
         </div>
+
+        <div class="mt-4 d-flex flex-wrap gap-3 align-items-end">
+          <div>
+            <label for="customInviteMaxUses" i18n>Max uses (optional)</label>
+            <input type="number" min="1" id="customInviteMaxUses" class="form-control" [(ngModel)]="newCustomInviteMaxUses">
+          </div>
+
+          <div>
+            <label for="customInviteExpiresAt" i18n>Expires at (optional)</label>
+            <input type="date" id="customInviteExpiresAt" class="form-control" [(ngModel)]="newCustomInviteExpiresAt">
+          </div>
+
+          <div>
+            <label for="customInviteCode" i18n>Link ID (minimum 8 characters, letters and digits)</label>
+            <input type="text" id="customInviteCode" class="form-control" [(ngModel)]="newCustomInviteCode">
+          </div>
+
+          <my-button theme="secondary" (click)="createCustomInvite()" i18n>Generate custom invite link</my-button>
+        </div>
       </div>
     </div>
   }

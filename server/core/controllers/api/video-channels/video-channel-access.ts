@@ -229,10 +229,10 @@ async function listVideoChannelInvites (req: express.Request, res: express.Respo
 
 async function createVideoChannelInvite (req: express.Request, res: express.Response) {
   const channel = res.locals.videoChannel
-  const body = req.body as { maxUses?: number | null, expiresAt?: string | null }
+  const body = req.body as { code: string, maxUses?: number | null, expiresAt?: string | null }
 
   const invite = await VideoChannelInviteModel.create({
-    code: await VideoChannelInviteModel.generateUniqueCode(),
+    code: body.code,
     channelId: channel.id,
     maxUses: body.maxUses ?? null,
     expiresAt: body.expiresAt ? new Date(body.expiresAt) : null
