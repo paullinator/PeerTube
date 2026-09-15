@@ -1,4 +1,4 @@
-import { HttpClient, HttpParams, HttpRequest } from '@angular/common/http'
+import { HttpClient, HttpContext, HttpParams, HttpRequest } from '@angular/common/http'
 import { inject, Injectable } from '@angular/core'
 import {
   AuthService,
@@ -31,6 +31,7 @@ import {
   VideoDetails as VideoDetailsServerModel,
   VideoFile,
   VideoFileMetadata,
+  VideoHLSCopyFromSource,
   VideoLicence,
   VideoLicenceType,
   VideoPrivacy,
@@ -39,9 +40,11 @@ import {
   Video as VideoServerModel,
   VideoSortField,
   VideoSource,
+  VideoStoredFile,
   VideoTranscodingCreate,
   VideoUpdate
 } from '@peertube/peertube-models'
+import { NGX_LOADING_BAR_IGNORED } from '@ngx-loading-bar/http-client'
 import { SortMeta } from 'primeng/api'
 import { from, Observable, of, throwError } from 'rxjs'
 import { catchError, concatMap, map, switchMap, toArray } from 'rxjs/operators'
@@ -484,6 +487,66 @@ export class VideoService {
   }
 
   // ---------------------------------------------------------------------------
+
+  getStoredFiles (videoId: number | string, options: { ignoreLoadingBar?: boolean } = {}) {
+    return this.authHttp
+      .get<VideoStoredFile[]>(VideoService.BASE_VIDEO_URL + '/' + videoId + '/stored-files', { context: this.buildContext(options) })
+      .pipe(catchError(err => this.restExtractor.handleError(err)))
+  }
+
+  getVideoState (videoId: number | string, options: { ignoreLoadingBar?: boolean } = {}) {
+    return this.authHttp
+      .get<VideoDetailsServerModel>(VideoService.BASE_VIDEO_URL + '/' + videoId, { context: this.buildContext(options) })
+      .pipe(
+        map(video => video.state.id),
+        catchError(err => this.restExtractor.handleError(err))
+      )
+  }
+
+  private buildContext (options: { ignoreLoadingBar?: boolean }) {
+    return options.ignoreLoadingBar
+      ? new HttpContext().set(NGX_LOADING_BAR_IGNORED, true)
+      : undefined
+  }
+
+  createHLSCopyFromSource (options: {
+    video: { uuid: string, name: string }
+    force?: boolean
+  }): Observable<any> {
+    return this.postHLSCopyFromSource(options)
+      .pipe(catchError(err => this.restExtractor.handleError(err)))
+  }
+
+  private postHLSCopyFromSource (options: {
+    video: { uuid: string, name: string }
+    force?: boolean
+  }): Observable<any> {
+    const { video, force } = options
+
+    const body: VideoHLSCopyFromSource = { force }
+
+    return this.authHttp.post(VideoService.BASE_VIDEO_URL + '/' + video.uuid + '/source/hls-copy', body)
+      .pipe(
+        catchError(err => {
+          if (err.error?.code === ServerErrorCode.VIDEO_ALREADY_BEING_TRANSCODED && !force) {
+            const message = $localize`PeerTube considers video "${video.name}" is already being transcoded.` +
+              $localize` If you think PeerTube is wrong (video in broken state after a crash etc.), you can force the copy.` +
+              $localize` Do you still want to copy the original file into HLS?`
+
+            return from(this.confirmService.confirm(message, $localize`Force copy`))
+              .pipe(
+                switchMap(res => {
+                  if (res === false) return throwError(() => err)
+
+                  return this.postHLSCopyFromSource({ video, force: true })
+                })
+              )
+          }
+
+          return throwError(() => err)
+        })
+      )
+  }
 
   getSource (videoId: number) {
     return this.authHttp

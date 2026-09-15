@@ -161,6 +161,10 @@ export interface HLSTranscodingPayload extends BaseTranscodingPayload {
   inputStreams: VideoFileStreamType[]
 
   transcodingRequestAt: string
+
+  // Stream-copy the kept original file instead of reading the current max quality file,
+  // then remove the other HLS resolutions and the web video files
+  fromOriginalFile?: boolean
 }
 
 export interface NewWebVideoResolutionTranscodingPayload extends BaseTranscodingPayload {
