@@ -7,6 +7,7 @@ import { VideoMainInfoComponent } from './main-info/video-main-info.component'
 import { VideoModerationComponent } from './moderation/video-moderation.component'
 import { VideoReplaceFileComponent } from './replace-file/video-replace-file.component'
 import { VideoStatsComponent } from './stats/video-stats.component'
+import { VideoStoredFilesComponent } from './stored-files/video-stored-files.component'
 import { VideoStudioEditComponent } from './studio/video-studio.component'
 
 export const manageRoutes = [
@@ -41,6 +42,10 @@ export const manageRoutes = [
   {
     path: 'replace-file',
     component: VideoReplaceFileComponent
+  },
+  {
+    path: 'stored-files',
+    component: VideoStoredFilesComponent
   },
   {
     path: 'stats',

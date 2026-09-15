@@ -1,4 +1,4 @@
-import { FileStorage } from '@peertube/peertube-models'
+import { FileStorage, FileStorageType } from '@peertube/peertube-models'
 import { buildUUID } from '@peertube/peertube-node-utils'
 import { Awaitable } from '@peertube/peertube-typescript-utils'
 import { logger, loggerTagsFactory } from '@server/helpers/logger.js'
@@ -17,7 +17,7 @@ import {
 import { Mutex } from 'async-mutex'
 import { remove } from 'fs-extra/esm'
 import { extname, join } from 'path'
-import { makeHLSFileAvailable, makeWebVideoFileAvailable } from './object-storage/index.js'
+import { makeHLSFileAvailable, makeOriginalFileAvailable, makeWebVideoFileAvailable } from './object-storage/index.js'
 import { getHLSDirectory, getHLSResolutionPlaylistFilename } from './paths.js'
 import { isVideoInPrivateDirectory } from './video-privacy.js'
 
@@ -58,6 +58,27 @@ class VideoPathManager {
 
   getFSOriginalVideoFilePath (filename: string) {
     return join(DIRECTORIES.ORIGINAL_VIDEOS, filename)
+  }
+
+  async makeAvailableOriginalFile<T> (videoSource: { keptOriginalFilename: string, storage: FileStorageType }, cb: MakeAvailableCB<T>) {
+    const { keptOriginalFilename } = videoSource
+
+    if (videoSource.storage === FileStorage.FILE_SYSTEM) {
+      return this.makeAvailableFactory({
+        createMethods: [ { method: () => this.getFSOriginalVideoFilePath(keptOriginalFilename), clean: false } ],
+        cbContext: paths => cb(paths[0])
+      })
+    }
+
+    return this.makeAvailableFactory({
+      createMethods: [
+        {
+          method: () => makeOriginalFileAvailable(keptOriginalFilename, this.buildTMPDestination(keptOriginalFilename)),
+          clean: true
+        }
+      ],
+      cbContext: paths => cb(paths[0])
+    })
   }
 
   // ---------------------------------------------------------------------------

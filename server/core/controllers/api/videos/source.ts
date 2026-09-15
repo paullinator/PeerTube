@@ -11,8 +11,10 @@ import { buildNewFile, createVideoSource } from '@server/lib/video-file.js'
 import { addRemoteStoryboardJobIfNeeded, buildLocalStoryboardJobIfNeeded, buildMoveVideoJob } from '@server/lib/video-jobs.js'
 import { VideoPathManager } from '@server/lib/video-path-manager.js'
 import { buildNextVideoState } from '@server/lib/video-state.js'
+import { createHLSCopyFromOriginalJob, listVideoStoredFiles } from '@server/lib/video-stored-files.js'
 import { openapiOperationDoc } from '@server/middlewares/doc.js'
 import { VideoChannelActivityModel } from '@server/models/video/video-channel-activity.js'
+import { VideoJobInfoModel } from '@server/models/video/video-job-info.js'
 import { VideoModel } from '@server/models/video/video.js'
 import { MStreamingPlaylistFiles, MVideo, MVideoFile, MVideoFull } from '@server/types/models/index.js'
 import express from 'express'
@@ -23,7 +25,9 @@ import {
   authenticate,
   replaceVideoSourceResumableInitValidator,
   replaceVideoSourceResumableValidator,
-  videoSourceGetLatestValidator
+  videoHLSCopyFromSourceValidator,
+  videoSourceGetLatestValidator,
+  videoStoredFilesValidator
 } from '../../../middlewares/index.js'
 
 const lTags = loggerTagsFactory('api', 'video')
@@ -44,6 +48,22 @@ videoSourceRouter.delete(
   authenticate,
   asyncMiddleware(videoSourceGetLatestValidator),
   asyncMiddleware(deleteVideoLatestSourceFile)
+)
+
+videoSourceRouter.post(
+  '/:id/source/hls-copy',
+  openapiOperationDoc({ operationId: 'createVideoHLSCopyFromSource' }),
+  authenticate,
+  asyncMiddleware(videoHLSCopyFromSourceValidator),
+  asyncMiddleware(createHLSCopyFromSource)
+)
+
+videoSourceRouter.get(
+  '/:id/stored-files',
+  openapiOperationDoc({ operationId: 'getVideoStoredFiles' }),
+  authenticate,
+  asyncMiddleware(videoStoredFilesValidator),
+  asyncMiddleware(getVideoStoredFiles)
 )
 
 setupUploadResumableRoutes({
@@ -87,6 +107,25 @@ async function deleteVideoLatestSourceFile (req: express.Request, res: express.R
 
 function getVideoLatestSource (req: express.Request, res: express.Response) {
   return res.json(res.locals.videoSource.toFormattedJSON())
+}
+
+async function getVideoStoredFiles (req: express.Request, res: express.Response) {
+  return res.json(await listVideoStoredFiles({ video: res.locals.videoFull, videoSource: res.locals.videoSource }))
+}
+
+async function createHLSCopyFromSource (req: express.Request, res: express.Response) {
+  const video = res.locals.videoFull
+
+  logger.info('Creating HLS copy of the original file of %s.', video.url, lTags(video.uuid))
+
+  await VideoJobInfoModel.abortAllTasks(video.uuid, 'pendingTranscode')
+
+  video.state = VideoState.TO_TRANSCODE
+  await video.save()
+
+  await createHLSCopyFromOriginalJob({ video, videoSource: res.locals.videoSource })
+
+  return res.sendStatus(HttpStatusCode.NO_CONTENT_204)
 }
 
 async function replaceVideoSourceResumable (req: express.Request, res: express.Response) {

@@ -4361,6 +4361,110 @@ paths:
         '404':
           description: video source not found
 
+  '/api/v1/videos/{id}/source/hls-copy':
+    post:
+      summary: Rebuild HLS by copying the kept original file
+      description: |
+        Stream-copies the kept original file into the HLS playlist, at its own resolution and frame rate, without
+        re-encoding it. Once done, the other HLS resolutions and the web video files are removed, so the copy is the
+        only file served. The original file and the video source are kept. Available to the video owner and to
+        users with the `UPDATE_ANY_VIDEO` right.
+      operationId: createVideoHLSCopyFromSource
+      tags:
+        - Video
+        - Video Transcoding
+      security:
+        - OAuth2: []
+      parameters:
+        - $ref: '#/components/parameters/idOrUUID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                force:
+                  type: boolean
+                  description: Run even if a transcoding job is pending or the video state would prevent it
+      responses:
+        '204':
+          description: successful operation, the copy job is created
+        '400':
+          description: the original file is not kept, the video is remote or live, or HLS transcoding is disabled
+        '403':
+          description: cannot manage this video
+        '404':
+          description: video not found
+        '409':
+          description: the video is already being transcoded, use `force` to run anyway
+
+  '/api/v1/videos/{id}/stored-files':
+    get:
+      summary: List the files of a video stored by the instance
+      description: |
+        The kept original file, HLS files and web video files, with codecs and bitrate read from the stored ffprobe
+        metadata. Available to the video owner and to users with the `UPDATE_ANY_VIDEO` right.
+      operationId: getVideoStoredFiles
+      tags:
+        - Video
+      security:
+        - OAuth2: []
+      parameters:
+        - $ref: '#/components/parameters/idOrUUID'
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    kind:
+                      type: string
+                      enum: [ original, hls, web-video ]
+                    id:
+                      type: integer
+                      nullable: true
+                      description: Video file id, null for the original file
+                    filename:
+                      type: string
+                    storage:
+                      type: string
+                      enum: [ file-system, object-storage ]
+                    resolution:
+                      $ref: '#/components/schemas/VideoResolutionConstant'
+                    width:
+                      type: integer
+                    height:
+                      type: integer
+                    fps:
+                      type: number
+                    size:
+                      type: integer
+                      description: File size in bytes
+                    videoCodec:
+                      type: string
+                      nullable: true
+                    audioCodec:
+                      type: string
+                      nullable: true
+                    bitrate:
+                      type: integer
+                      nullable: true
+                      description: Bits per second
+                    fileDownloadUrl:
+                      type: string
+                      nullable: true
+                    createdAt:
+                      type: string
+                      format: date-time
+        '403':
+          description: cannot manage this video
+        '404':
+          description: video not found
+
   '/api/v1/videos/{id}/source/replace-resumable':
     post:
       summary: Initialize the resumable replacement of a video

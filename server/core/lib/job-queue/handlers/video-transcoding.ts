@@ -9,13 +9,15 @@ import {
 import { CONFIG } from '@server/initializers/config.js'
 import { hasMissingHLSStreams } from '@server/lib/runners/job-handlers/shared/utils.js'
 import { onTranscodingEnded } from '@server/lib/transcoding/ended-transcoding.js'
+import { updateM3U8AndShaPlaylist } from '@server/lib/hls.js'
 import { generateHlsPlaylistResolution } from '@server/lib/transcoding/hls-transcoding.js'
 import { mergeAudioVideofile, optimizeOriginalVideofile, transcodeNewWebVideoResolution } from '@server/lib/transcoding/web-transcoding.js'
-import { removeAllWebVideoFiles } from '@server/lib/video-file.js'
+import { removeAllWebVideoFiles, removeHLSFile } from '@server/lib/video-file.js'
 import { VideoPathManager } from '@server/lib/video-path-manager.js'
 import { moveToFailedTranscodingState } from '@server/lib/video-state.js'
 import { UserModel } from '@server/models/user/user.js'
 import { VideoJobInfoModel } from '@server/models/video/video-job-info.js'
+import { VideoSourceModel } from '@server/models/video/video-source.js'
 import { MUser, MUserId, MVideoFull } from '@server/types/models/index.js'
 import { Job } from 'bullmq'
 import { logger, loggerTagsFactory } from '../../../helpers/logger.js'
@@ -112,7 +114,72 @@ async function handleNewWebVideoResolutionJob (job: Job, payload: NewWebVideoRes
 
 // ---------------------------------------------------------------------------
 
+async function handleHLSCopyFromOriginalJob (job: Job, payload: HLSTranscodingPayload, videoArg: MVideoFull) {
+  logger.info('Handling HLS copy of the original file job for %s.', videoArg.uuid, lTags(videoArg.uuid), { payload })
+
+  const inputFileMutexReleaser = await VideoPathManager.Instance.lockFiles(videoArg.uuid)
+  let video: MVideoFull
+
+  try {
+    video = await VideoModel.loadFull(videoArg.uuid)
+
+    const videoSource = await VideoSourceModel.loadLatest(video.id)
+    if (!videoSource?.keptOriginalFilename) {
+      throw new Error(`Cannot copy the original file of ${video.uuid} because it is not kept`)
+    }
+
+    await VideoPathManager.Instance.makeAvailableOriginalFile(videoSource, originalPath => {
+      return generateHlsPlaylistResolution({
+        video,
+        videoInputPath: originalPath,
+        separatedAudioInputPath: undefined,
+        inputFileMutexReleaser,
+        resolution: payload.resolution,
+        fps: payload.fps,
+        separatedAudio: false,
+        forceCopyCodecs: true,
+        job
+      })
+    })
+  } finally {
+    inputFileMutexReleaser()
+  }
+
+  // The copy is now the only file served
+  video = await VideoModel.loadFull(videoArg.uuid)
+  const copiedFileId = video.getHLSPlaylist()?.VideoFiles.find(f => f.resolution === payload.resolution)?.id
+
+  if (copiedFileId) {
+    const otherHLSFileIds = video.getHLSPlaylist().VideoFiles
+      .filter(f => f.id !== copiedFileId)
+      .map(f => f.id)
+
+    for (const fileId of otherHLSFileIds) {
+      await removeHLSFile(video, fileId)
+      video = await VideoModel.loadFull(videoArg.uuid)
+    }
+
+    // Otherwise the master playlist still lists the removed resolutions and players fail to load them
+    if (otherHLSFileIds.length !== 0) {
+      await updateM3U8AndShaPlaylist(video, video.getHLSPlaylist())
+      video = await VideoModel.loadFull(videoArg.uuid)
+    }
+
+    if (video.VideoFiles.length !== 0) {
+      logger.info('Removing Web Video files of %s now we have a HLS copy of the original file.', video.uuid, lTags(video.uuid))
+
+      await removeAllWebVideoFiles(video)
+    }
+  }
+
+  logger.info('HLS copy of the original file job for %s ended.', video.uuid, lTags(video.uuid), { payload })
+
+  await onTranscodingEnded({ isNewVideo: payload.isNewVideo, moveVideoToNextState: payload.canMoveVideoState, video })
+}
+
 async function handleHLSJob (job: Job, payload: HLSTranscodingPayload, videoArg: MVideoFull) {
+  if (payload.fromOriginalFile === true) return handleHLSCopyFromOriginalJob(job, payload, videoArg)
+
   logger.info('Handling HLS transcoding job for %s.', videoArg.uuid, lTags(videoArg.uuid), { payload })
 
   const inputFileMutexReleaser = await VideoPathManager.Instance.lockFiles(videoArg.uuid)

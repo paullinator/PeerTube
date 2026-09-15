@@ -57,6 +57,7 @@ export function generateHlsPlaylistResolution (options: {
   fps: number
   inputFileMutexReleaser: MutexInterface.Releaser
   separatedAudio: boolean
+  forceCopyCodecs?: boolean // default false
   job?: Job
 }) {
   return generateHlsPlaylistCommon({
@@ -69,6 +70,7 @@ export function generateHlsPlaylistResolution (options: {
       'resolution',
       'fps',
       'separatedAudio',
+      'forceCopyCodecs',
       'inputFileMutexReleaser',
       'job'
     ])
@@ -170,6 +172,8 @@ async function generateHlsPlaylistCommon (options: {
   isAAC?: boolean
   isHEVC?: boolean
 
+  forceCopyCodecs?: boolean
+
   job?: Job
 }) {
   const {
@@ -182,6 +186,7 @@ async function generateHlsPlaylistCommon (options: {
     separatedAudio,
     isAAC,
     isHEVC,
+    forceCopyCodecs,
     job,
     inputFileMutexReleaser,
     preventInputFileLocking
@@ -211,8 +216,11 @@ async function generateHlsPlaylistCommon (options: {
     resolution,
     fps,
 
-    copyCodecs: !separatedAudioInputPath &&
-      (CONFIG.TRANSCODING.COPY_ONLY === true || await canCopyForHLS({ fps, resolution, path: videoInputPath }, inputProbe)),
+    copyCodecs: !separatedAudioInputPath && (
+      forceCopyCodecs === true ||
+      CONFIG.TRANSCODING.COPY_ONLY === true ||
+      await canCopyForHLS({ fps, resolution, path: videoInputPath }, inputProbe)
+    ),
 
     separatedAudio,
 
