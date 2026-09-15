@@ -1,7 +1,16 @@
 import { pick } from '@peertube/peertube-core-utils'
-import { canCopyForHLS, getVideoStreamDuration, HLSFromTSTranscodeOptions, HLSTranscodeOptions } from '@peertube/peertube-ffmpeg'
+import {
+  canCopyForHLS,
+  ffprobePromise,
+  getVideoStream,
+  getVideoStreamDuration,
+  HLSFromTSTranscodeOptions,
+  HLSTranscodeOptions
+} from '@peertube/peertube-ffmpeg'
 import { retryTransactionWrapper } from '@server/helpers/database-utils.js'
+import { neutralizeEmptySdtpBoxes } from '@server/helpers/ffmpeg/fmp4.js'
 import { deleteFileAndCatch } from '@server/helpers/fs.js'
+import { logger } from '@server/helpers/logger.js'
 import { sequelizeTypescript } from '@server/initializers/database.js'
 import { createTorrentAndSetInfoHash } from '@server/lib/webtorrent.js'
 import { MVideo } from '@server/types/models/index.js'
@@ -50,6 +59,7 @@ export function generateHlsPlaylistResolution (options: {
   fps: number
   inputFileMutexReleaser: MutexInterface.Releaser
   separatedAudio: boolean
+  forceCopyCodecs?: boolean // default false
   job?: Job
 }) {
   return generateHlsPlaylistCommon({
@@ -62,6 +72,7 @@ export function generateHlsPlaylistResolution (options: {
       'resolution',
       'fps',
       'separatedAudio',
+      'forceCopyCodecs',
       'inputFileMutexReleaser',
       'job'
     ])
@@ -102,6 +113,12 @@ export async function onHLSVideoFileTranscoding (options: {
       getHLSResolutionPlaylistFilename(newVideoFile.filename)
     )
     await move(m3u8OutputPath, resolutionPlaylistPath, { overwrite: true })
+
+    // Apple's player refuses the empty sdtp box older FFmpeg versions write in the init segment
+    const emptySdtpBoxes = await neutralizeEmptySdtpBoxes(videoOutputPath)
+    if (emptySdtpBoxes !== 0) {
+      logger.info(`Renamed ${emptySdtpBoxes} empty sdtp box(es) in HLS file of ${video.uuid}`, { videoUUID: video.uuid })
+    }
 
     // Move video file
     await move(videoOutputPath, videoFilePath, { overwrite: true })
@@ -163,6 +180,8 @@ async function generateHlsPlaylistCommon (options: {
   isAAC?: boolean
   isHEVC?: boolean
 
+  forceCopyCodecs?: boolean
+
   job?: Job
 }) {
   const {
@@ -175,6 +194,7 @@ async function generateHlsPlaylistCommon (options: {
     separatedAudio,
     isAAC,
     isHEVC,
+    forceCopyCodecs,
     job,
     inputFileMutexReleaser,
     preventInputFileLocking
@@ -191,6 +211,8 @@ async function generateHlsPlaylistCommon (options: {
   const resolutionPlaylistFilename = getHLSResolutionPlaylistFilename(videoFilename)
   const m3u8OutputPath = join(videoTranscodedBasePath, resolutionPlaylistFilename)
 
+  const inputProbe = await ffprobePromise(videoInputPath)
+
   const transcodeOptions: HLSTranscodeOptions | HLSFromTSTranscodeOptions = {
     type,
 
@@ -202,12 +224,16 @@ async function generateHlsPlaylistCommon (options: {
     resolution,
     fps,
 
-    copyCodecs: !separatedAudioInputPath && await canCopyForHLS({ fps, resolution, path: videoInputPath }),
+    copyCodecs: !separatedAudioInputPath && (
+      forceCopyCodecs === true ||
+      CONFIG.TRANSCODING.COPY_ONLY === true ||
+      await canCopyForHLS({ fps, resolution, path: videoInputPath }, inputProbe)
+    ),
 
     separatedAudio,
 
     isAAC,
-    isHEVC,
+    isHEVC: isHEVC ?? (await getVideoStream(videoInputPath, inputProbe))?.codec_name === 'hevc',
 
     inputFileMutexReleaser,
 

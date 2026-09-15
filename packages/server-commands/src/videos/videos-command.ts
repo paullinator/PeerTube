@@ -16,7 +16,9 @@ import {
   VideoPrivacy,
   VideoPrivacyType,
   VideosCommonQuery,
+  VideoHLSCopyFromSource,
   VideoSource,
+  VideoStoredFile,
   VideoTranscodingCreate
 } from '@peertube/peertube-models'
 import { buildAbsoluteFixturePath, buildUUID } from '@peertube/peertube-node-utils'
@@ -626,6 +628,39 @@ export class VideosCommand extends AbstractCommand {
       ...options,
 
       path,
+      implicitToken: true,
+      defaultExpectedStatus: HttpStatusCode.NO_CONTENT_204
+    })
+  }
+
+  getStoredFiles (
+    options: OverrideCommandOptions & {
+      id: number | string
+    }
+  ) {
+    const path = '/api/v1/videos/' + options.id + '/stored-files'
+
+    return this.getRequestBody<VideoStoredFile[]>({
+      ...options,
+
+      path,
+      implicitToken: true,
+      defaultExpectedStatus: HttpStatusCode.OK_200
+    })
+  }
+
+  createHLSCopyFromSource (
+    options: OverrideCommandOptions & VideoHLSCopyFromSource & {
+      id: number | string
+    }
+  ) {
+    const path = '/api/v1/videos/' + options.id + '/source/hls-copy'
+
+    return this.postBodyRequest({
+      ...options,
+
+      path,
+      fields: pick(options, [ 'force' ]),
       implicitToken: true,
       defaultExpectedStatus: HttpStatusCode.NO_CONTENT_204
     })

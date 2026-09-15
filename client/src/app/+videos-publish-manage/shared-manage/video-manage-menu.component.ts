@@ -109,6 +109,13 @@ export class VideoManageMenuComponent implements OnInit {
           routerLink: 'replace-file',
           unavailableText: () => this.replaceFileUnavailable()
         },
+        {
+          type: 'link',
+          isDisplayed: () => !this.getVideo().isLive,
+          label: $localize`Stored files`,
+          icon: 'film',
+          routerLink: 'stored-files'
+        },
 
         {
           type: 'separator'

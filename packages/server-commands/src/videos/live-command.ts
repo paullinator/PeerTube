@@ -242,6 +242,7 @@ export class LiveCommand extends AbstractCommand {
       segment: number
       objectStorage?: ObjectStorageCommand
       objectStorageBaseUrl?: string
+      segmentExtension?: '.m4s' | '.ts' // default .m4s, remote runners send .ts
     }
   ) {
     const {
@@ -250,10 +251,11 @@ export class LiveCommand extends AbstractCommand {
       playlistNumber,
       segment,
       videoUUID,
-      objectStorageBaseUrl
+      objectStorageBaseUrl,
+      segmentExtension = '.m4s'
     } = options
 
-    const segmentName = `${playlistNumber}-00000${segment}.ts`
+    const segmentName = `${playlistNumber}-00000${segment}${segmentExtension}`
     const baseUrl = objectStorage
       ? join(objectStorageBaseUrl || objectStorage.getMockPlaylistBaseUrl(), 'hls')
       : server.url + '/static/streaming-playlists/hls'
@@ -314,11 +316,12 @@ export class LiveCommand extends AbstractCommand {
       playlistNumber: number
       segment: number
       objectStorage?: ObjectStorageCommand
+      segmentExtension?: '.m4s' | '.ts' // default .m4s, remote runners send .ts
     }
   ) {
-    const { playlistNumber, segment, videoUUID, objectStorage } = options
+    const { playlistNumber, segment, videoUUID, objectStorage, segmentExtension = '.m4s' } = options
 
-    const segmentName = `${playlistNumber}-00000${segment}.ts`
+    const segmentName = `${playlistNumber}-00000${segment}${segmentExtension}`
     const baseUrl = objectStorage
       ? objectStorage.getMockPlaylistBaseUrl()
       : `${this.server.url}/static/streaming-playlists/hls`

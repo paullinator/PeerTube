@@ -1,8 +1,8 @@
 /* oxlint-disable @typescript-eslint/no-unused-expressions,@typescript-eslint/require-await */
 
 import { getVideoStreamDimensionsInfo, getVideoStreamFPS } from '@peertube/peertube-ffmpeg'
-import { LiveVideo, VideoResolution, VideoStreamingPlaylistType } from '@peertube/peertube-models'
-import { ObjectStorageCommand, PeerTubeServer } from '@peertube/peertube-server-commands'
+import { HttpStatusCode, LiveVideo, VideoResolution, VideoStreamingPlaylistType } from '@peertube/peertube-models'
+import { makeRawRequest, ObjectStorageCommand, PeerTubeServer } from '@peertube/peertube-server-commands'
 import { expect } from 'chai'
 import { pathExists } from 'fs-extra/esm'
 import { readdir } from 'fs/promises'
@@ -66,6 +66,8 @@ async function testLiveVideoResolutions (options: {
 
   objectStorage?: ObjectStorageCommand
   objectStorageBaseUrl?: string
+
+  segmentExtension?: '.m4s' | '.ts' // default .m4s, remote runners send .ts
 }) {
   const {
     originServer,
@@ -77,7 +79,8 @@ async function testLiveVideoResolutions (options: {
     objectStorage,
     hasAudio = true,
     hasVideo = true,
-    objectStorageBaseUrl = objectStorage?.getMockPlaylistBaseUrl()
+    objectStorageBaseUrl = objectStorage?.getMockPlaylistBaseUrl(),
+    segmentExtension = '.m4s'
   } = options
 
   // Live is always audio/video splitted
@@ -125,18 +128,24 @@ async function testLiveVideoResolutions (options: {
 
     for (let i = 0; i < resolutions.length; i++) {
       const segmentNum = 3
-      const segmentName = `${i}-00000${segmentNum}.ts`
+      const segmentName = `${i}-00000${segmentNum}${segmentExtension}`
       await originServer.live.waitUntilSegmentGeneration({
         server: originServer,
         videoUUID: video.uuid,
         playlistNumber: i,
         segment: segmentNum,
         objectStorage,
-        objectStorageBaseUrl
+        objectStorageBaseUrl,
+        segmentExtension
       })
 
       if (framerates) {
-        const segmentPath = servers[0].servers.buildDirectory(join('streaming-playlists', 'hls', video.uuid, segmentName))
+        // A fragmented MP4 segment can't be probed without its init segment, so probe it through its playlist
+        const probedFile = segmentExtension === '.m4s'
+          ? `${i}.m3u8`
+          : segmentName
+
+        const segmentPath = servers[0].servers.buildDirectory(join('streaming-playlists', 'hls', video.uuid, probedFile))
         const { resolution } = await getVideoStreamDimensionsInfo(segmentPath)
 
         if (resolution) {
@@ -159,6 +168,13 @@ async function testLiveVideoResolutions (options: {
       })
 
       expect(subPlaylist).to.contain(segmentName)
+
+      if (segmentExtension === '.m4s') {
+        const initSegmentName = `${i}-init.mp4`
+
+        expect(subPlaylist).to.contain(`#EXT-X-MAP:URI="${initSegmentName}"`)
+        await makeRawRequest({ url: `${baseUrl}/${video.uuid}/${initSegmentName}`, expectedStatus: HttpStatusCode.OK_200 })
+      }
 
       await checkLiveSegmentHash({
         server,

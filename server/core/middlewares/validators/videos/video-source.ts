@@ -1,10 +1,12 @@
-import { HttpStatusCode, UserRight } from '@peertube/peertube-models'
+import { HttpStatusCode, ServerErrorCode, UserRight, VideoHLSCopyFromSource } from '@peertube/peertube-models'
+import { isBooleanValid, toBooleanOrNull } from '@server/helpers/custom-validators/misc.js'
 import { CONFIG } from '@server/initializers/config.js'
 import { buildUploadXFile, safeUploadXCleanup } from '@server/lib/uploadx.js'
+import { VideoJobInfoModel } from '@server/models/video/video-job-info.js'
 import { VideoSourceModel } from '@server/models/video/video-source.js'
 import { Metadata as UploadXMetadata } from '@uploadx/core'
 import express from 'express'
-import { param } from 'express-validator'
+import { body, param } from 'express-validator'
 import {
   areValidationErrors,
   checkCanAccessVideoSourceFile,
@@ -13,6 +15,7 @@ import {
   isValidVideoIdParam
 } from '../shared/index.js'
 import { addDurationToVideoFileIfNeeded, checkVideoFileCanBeEdited, commonVideoFileChecks, isVideoFileAccepted } from './shared/index.js'
+import { checkVideoCanBeTranscribedOrTranscoded } from './shared/video-validators.js'
 
 export const videoSourceGetLatestValidator = [
   isValidVideoIdParam('id'),
@@ -36,6 +39,82 @@ export const videoSourceGetLatestValidator = [
         message: req.t('Video source not found')
       })
     }
+
+    return next()
+  }
+]
+
+export const videoStoredFilesValidator = [
+  isValidVideoIdParam('id'),
+
+  async (req: express.Request, res: express.Response, next: express.NextFunction) => {
+    if (areValidationErrors(req, res)) return
+    if (!await doesVideoExist(req.params.id, res, 'full')) return
+
+    const video = res.locals.videoFull
+
+    const user = res.locals.oauth.token.User
+    if (!await checkCanManageVideo({ user, video, right: UserRight.UPDATE_ANY_VIDEO, req, res, checkIsLocal: true, checkIsOwner: false })) {
+      return
+    }
+
+    // Can be null for videos uploaded before PeerTube tracked sources
+    res.locals.videoSource = await VideoSourceModel.loadLatest(video.id)
+
+    return next()
+  }
+]
+
+export const videoHLSCopyFromSourceValidator = [
+  isValidVideoIdParam('id'),
+
+  body('force')
+    .optional()
+    .custom(isBooleanValid)
+    .customSanitizer(toBooleanOrNull),
+
+  async (req: express.Request, res: express.Response, next: express.NextFunction) => {
+    if (areValidationErrors(req, res)) return
+    if (!await doesVideoExist(req.params.id, res, 'full')) return
+
+    const video = res.locals.videoFull
+    const body = req.body as VideoHLSCopyFromSource
+
+    const user = res.locals.oauth.token.User
+    if (!await checkCanManageVideo({ user, video, right: UserRight.UPDATE_ANY_VIDEO, req, res, checkIsLocal: true, checkIsOwner: false })) {
+      return
+    }
+
+    if (!checkVideoCanBeTranscribedOrTranscoded({ video, req, res, skipStateCheck: body.force === true })) return
+
+    if (CONFIG.TRANSCODING.ENABLED !== true || CONFIG.TRANSCODING.HLS.ENABLED !== true) {
+      return res.fail({
+        status: HttpStatusCode.BAD_REQUEST_400,
+        message: req.t('Cannot copy the original file because HLS transcoding is disabled on this instance')
+      })
+    }
+
+    const videoSource = await VideoSourceModel.loadLatest(video.id)
+    if (!videoSource?.keptOriginalFilename) {
+      return res.fail({
+        status: HttpStatusCode.BAD_REQUEST_400,
+        message: req.t('The original file of this video is not kept on this instance')
+      })
+    }
+
+    if (body.force !== true) {
+      const info = await VideoJobInfoModel.load(video.id)
+
+      if (info && info.pendingTranscode > 0) {
+        return res.fail({
+          status: HttpStatusCode.CONFLICT_409,
+          type: ServerErrorCode.VIDEO_ALREADY_BEING_TRANSCODED,
+          message: req.t('This video is already being transcoded')
+        })
+      }
+    }
+
+    res.locals.videoSource = videoSource
 
     return next()
   }

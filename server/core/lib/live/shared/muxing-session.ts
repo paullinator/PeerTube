@@ -7,7 +7,7 @@ import {
   VideoResolution,
   VideoStreamingPlaylistType
 } from '@peertube/peertube-models'
-import { computeOutputFPS } from '@server/helpers/ffmpeg/index.js'
+import { computeOutputFPS, neutralizeEmptySdtpBoxes } from '@server/helpers/ffmpeg/index.js'
 import { LoggerTagsFn, logger, loggerTagsFactory } from '@server/helpers/logger.js'
 import { CONFIG } from '@server/initializers/config.js'
 import { MEMOIZE_TTL, P2P_MEDIA_LOADER_PEER_VERSION, VIDEO_LIVE } from '@server/initializers/constants.js'
@@ -33,7 +33,13 @@ import {
 import { isUserQuotaValid } from '../../user.js'
 import { LiveQuotaStore } from '../live-quota-store.js'
 import { LiveSegmentShaStore } from '../live-segment-sha-store.js'
-import { buildConcatenatedName, getLiveSegmentListSize, getLiveSegmentTime } from '../live-utils.js'
+import {
+  buildConcatenatedName,
+  getLiveInitSegmentName,
+  getLiveSegmentListSize,
+  getLiveSegmentTime,
+  isLiveSegmentFile
+} from '../live-utils.js'
 import { AbstractTranscodingWrapper, FFmpegTranscodingWrapper, RemoteTranscodingWrapper } from './transcoding-wrapper/index.js'
 
 interface MuxingSessionEvents {
@@ -99,6 +105,10 @@ class MuxingSession extends EventEmitter implements MuxingSession {
   private readonly objectStorageSendQueues = new Map<string, PQueue>()
 
   private segmentsToProcessPerPlaylist: { [playlistId: string]: string[] } = {}
+
+  // Fragmented MP4 playlists whose init segment was processed, and replay files that already start with it
+  private readonly processedInitSegments = new Set<string>()
+  private readonly replayFilesWithInitSegment = new Set<string>()
 
   private streamingPlaylist: MStreamingPlaylistVideo
   private liveSegmentShaStore: LiveSegmentShaStore
@@ -260,9 +270,9 @@ class MuxingSession extends EventEmitter implements MuxingSession {
     const startStreamDateTime = new Date().getTime()
 
     const addHandler = (segmentPath: string) => {
-      if (segmentPath.endsWith('.ts') !== true) return
+      if (isLiveSegmentFile(segmentPath) !== true) return
 
-      logger.debug('Live add handler of TS file %s.', segmentPath, this.lTags())
+      logger.debug('Live add handler of segment %s.', segmentPath, this.lTags())
 
       const playlistId = this.getPlaylistIdFromTS(segmentPath)
 
@@ -280,9 +290,9 @@ class MuxingSession extends EventEmitter implements MuxingSession {
     }
 
     const deleteHandler = async (segmentPath: string) => {
-      if (segmentPath.endsWith('.ts') !== true) return
+      if (isLiveSegmentFile(segmentPath) !== true) return
 
-      logger.debug('Live delete handler of TS file %s.', segmentPath, this.lTags())
+      logger.debug('Live delete handler of segment %s.', segmentPath, this.lTags())
 
       try {
         await this.liveSegmentShaStore.removeSegmentSha(segmentPath)
@@ -376,6 +386,8 @@ class MuxingSession extends EventEmitter implements MuxingSession {
       return
     }
 
+    await this.processInitSegmentIfNeeded(segmentPath)
+
     // Add sha hash of previous segments, because ffmpeg should have finished generating them
     await this.liveSegmentShaStore.addSegmentSha(segmentPath)
 
@@ -398,6 +410,32 @@ class MuxingSession extends EventEmitter implements MuxingSession {
       this.liveReady = true
 
       this.emit('live-ready', { videoUUID: this.videoUUID })
+    }
+  }
+
+  // ffmpeg has written the init segment of a fragmented MP4 playlist once its first media segment is complete
+  private async processInitSegmentIfNeeded (segmentPath: string) {
+    if (!segmentPath.endsWith('.m4s')) return
+
+    const playlistId = this.getPlaylistIdFromTS(segmentPath)
+    if (this.processedInitSegments.has(playlistId)) return
+
+    this.processedInitSegments.add(playlistId)
+
+    const initSegmentPath = join(this.outDirectory, getLiveInitSegmentName(playlistId))
+
+    try {
+      // Apple's player refuses the empty sdtp box older FFmpeg versions write in the init segment
+      const emptySdtpBoxes = await neutralizeEmptySdtpBoxes(initSegmentPath)
+      if (emptySdtpBoxes !== 0) {
+        logger.info(`Renamed ${emptySdtpBoxes} empty sdtp box(es) in live init segment ${initSegmentPath}`, this.lTags())
+      }
+
+      if (this.streamingPlaylist.storage === FileStorage.OBJECT_STORAGE) {
+        await storeHLSFileFromPath(this.streamingPlaylist.Video, initSegmentPath)
+      }
+    } catch (err) {
+      logger.error('Cannot process live init segment %s', initSegmentPath, { err, ...this.lTags() })
     }
   }
 
@@ -496,6 +534,14 @@ class MuxingSession extends EventEmitter implements MuxingSession {
     logger.debug(`Add segment ${segmentPath} to replay ${dest}`, this.lTags())
 
     try {
+      // A fragmented MP4 replay file starts with the init segment of its playlist
+      if (segmentPath.endsWith('.m4s') && !this.replayFilesWithInitSegment.has(dest)) {
+        this.replayFilesWithInitSegment.add(dest)
+
+        const initSegmentPath = join(this.outDirectory, getLiveInitSegmentName(this.getPlaylistIdFromTS(segmentPath)))
+        await appendFile(dest, await readFile(initSegmentPath))
+      }
+
       const data = await readFile(segmentPath)
 
       await appendFile(dest, data)

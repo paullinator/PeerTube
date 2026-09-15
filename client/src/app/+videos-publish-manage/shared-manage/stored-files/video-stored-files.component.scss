@@ -1,0 +1,62 @@
+@use '_variables' as *;
+@use '_mixins' as *;
+
+.table-container {
+  overflow-x: auto;
+}
+
+.stored-files {
+  width: 100%;
+  border-collapse: collapse;
+
+  th,
+  td {
+    padding: 0.5rem 0.75rem;
+    text-align: start;
+    white-space: nowrap;
+    border-bottom: 1px solid pvar(--secondary-icon-color);
+  }
+
+  th {
+    font-weight: 600;
+  }
+
+  tr.original td {
+    font-weight: 600;
+  }
+}
+
+.muted {
+  opacity: 0.7;
+  font-size: 0.85em;
+}
+
+.copy-original {
+  margin-top: 2rem;
+
+  h3 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+  }
+}
+
+.processing {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1.5rem;
+  border: 1px solid pvar(--secondary-icon-color);
+  border-radius: 4px;
+}
+
+.delete-original {
+  margin-top: 2rem;
+
+  h3 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+  }
+}

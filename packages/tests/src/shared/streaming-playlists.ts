@@ -406,10 +406,11 @@ export async function checkVideoFileTokenReinjection (options: {
       const { text } = await makeRawRequest({ url, query, expectedStatus: HttpStatusCode.OK_200 })
 
       const extension = isLive
-        ? '.ts'
+        ? '.m4s'
         : '.mp4'
 
       expect(text).to.contain(`${extension}?videoFileToken=${videoFileToken}`)
+      if (isLive) expect(text).to.contain(`-init.mp4?videoFileToken=${videoFileToken}`)
       expect(text).not.to.contain(`reinjectVideoFileToken=true`)
     }
   }

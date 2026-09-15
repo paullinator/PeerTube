@@ -6,11 +6,16 @@ import { FFmpegCommandWrapper, FFmpegCommandWrapperOptions } from './ffmpeg-comm
 import { StreamType, buildStreamSuffix, getScaleFilter } from './ffmpeg-utils.js'
 import { addDefaultEncoderGlobalParams, addDefaultEncoderParams, applyEncoderOptions } from './shared/index.js'
 
+// fmp4 segments start with an init segment named <playlist number>-init.mp4
+export type LiveSegmentType = 'mpegts' | 'fmp4'
+
 type LiveTranscodingOptions = {
   inputUrl: string
 
   outPath: string
   masterPlaylistName: string
+
+  segmentType?: LiveSegmentType // default mpegts
 
   toTranscode: {
     resolution: number
@@ -115,7 +120,16 @@ export class FFmpegLive {
       command.complexFilter(complexFilter)
     }
 
-    this.addDefaultLiveHLSParams({ ...pick(options, [ 'segmentDuration', 'segmentListSize' ]), outPath, masterPlaylistName })
+    this.addDefaultLiveHLSParams({
+      ...pick(options, [ 'segmentDuration', 'segmentListSize', 'segmentType' ]),
+
+      outPath,
+      masterPlaylistName,
+      // ffmpeg only substitutes %v in the init filename with several variant streams
+      initFilename: varStreamMap.length > 1
+        ? '%v-init.mp4'
+        : '0-init.mp4'
+    })
 
     command.outputOption('-var_stream_map', varStreamMap.join(' '))
 
@@ -132,7 +146,7 @@ export class FFmpegLive {
   }
 
   private async buildTranscodingStream (
-    options: Pick<LiveTranscodingOptions, 'inputUrl' | 'bitrate' | 'ratio' | 'probe' | 'hasAudio' | 'splitAudioAndVideo'> & {
+    options: Pick<LiveTranscodingOptions, 'inputUrl' | 'bitrate' | 'ratio' | 'probe' | 'hasAudio' | 'splitAudioAndVideo' | 'segmentType'> & {
       command: FfmpegCommand
       resolution: number
       fps: number
@@ -140,7 +154,7 @@ export class FFmpegLive {
       streamType: StreamType
     }
   ) {
-    const { inputUrl, bitrate, ratio, probe, splitAudioAndVideo, command, resolution, fps, streamNum, streamType, hasAudio } = options
+    const { inputUrl, bitrate, ratio, probe, splitAudioAndVideo, command, resolution, fps, streamNum, streamType, hasAudio, segmentType } = options
 
     const baseEncoderBuilderParams = {
       input: inputUrl,
@@ -192,6 +206,10 @@ export class FFmpegLive {
     } else {
       command.outputOption(`${buildStreamSuffix('-c:v', streamNum)} ${builderResult.encoder}`)
 
+      if (segmentType === 'fmp4' && builderResult.encoder === 'copy' && isHEVCProbe(probe)) {
+        command.outputOption(`${buildStreamSuffix('-tag:v', streamNum)} hvc1`)
+      }
+
       complexFilter.push({
         inputs: `vtemp${resolution}`,
         filter: getScaleFilter(builderResult.result),
@@ -224,8 +242,11 @@ export class FFmpegLive {
 
     segmentListSize: number
     segmentDuration: number
+
+    segmentType?: LiveSegmentType // default mpegts
+    isHEVC?: boolean
   }) {
-    const { inputUrl, outPath, masterPlaylistName } = options
+    const { inputUrl, outPath, masterPlaylistName, segmentType, isHEVC } = options
 
     const command = this.commandWrapper.buildCommand(inputUrl)
 
@@ -234,7 +255,17 @@ export class FFmpegLive {
     command.outputOption('-map 0:a?')
     command.outputOption('-map 0:v?')
 
-    this.addDefaultLiveHLSParams({ ...pick(options, [ 'segmentDuration', 'segmentListSize' ]), outPath, masterPlaylistName })
+    // ffmpeg tags copied HEVC as hev1 in mp4 by default, which Apple players refuse
+    if (segmentType === 'fmp4' && isHEVC) command.outputOption('-tag:v hvc1')
+
+    this.addDefaultLiveHLSParams({
+      ...pick(options, [ 'segmentDuration', 'segmentListSize', 'segmentType' ]),
+
+      outPath,
+      masterPlaylistName,
+      // Without a var_stream_map, ffmpeg doesn't substitute %v in the init filename. The only playlist is number 0
+      initFilename: '0-init.mp4'
+    })
 
     return command
   }
@@ -246,18 +277,32 @@ export class FFmpegLive {
     masterPlaylistName: string
     segmentListSize: number
     segmentDuration: number
+    segmentType?: LiveSegmentType
+    initFilename: string
   }) {
-    const { outPath, masterPlaylistName, segmentListSize, segmentDuration } = options
+    const { outPath, masterPlaylistName, segmentListSize, segmentDuration, segmentType = 'mpegts', initFilename } = options
 
     const command = this.commandWrapper.getCommand()
 
     command.outputOption('-hls_time ' + segmentDuration)
     command.outputOption('-hls_list_size ' + segmentListSize)
     command.outputOption('-hls_flags delete_segments+independent_segments+program_date_time+temp_file')
-    command.outputOption(`-hls_segment_filename ${join(outPath, '%v-%06d.ts')}`)
+
+    if (segmentType === 'fmp4') {
+      // ffmpeg writes the init segment next to the playlists
+      command.outputOption('-hls_segment_type fmp4')
+      command.outputOption('-hls_fmp4_init_filename ' + initFilename)
+      command.outputOption(`-hls_segment_filename ${join(outPath, '%v-%06d.m4s')}`)
+    } else {
+      command.outputOption(`-hls_segment_filename ${join(outPath, '%v-%06d.ts')}`)
+    }
     command.outputOption('-master_pl_name ' + masterPlaylistName)
     command.outputOption(`-f hls`)
 
     command.output(join(outPath, '%v.m3u8'))
   }
+}
+
+function isHEVCProbe (probe: FfprobeData) {
+  return probe?.streams.some(s => s.codec_type === 'video' && s.codec_name === 'hevc') === true
 }

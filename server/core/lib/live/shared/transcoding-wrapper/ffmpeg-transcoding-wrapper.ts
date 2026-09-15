@@ -34,7 +34,10 @@ export class FFmpegTranscodingWrapper extends AbstractTranscodingWrapper {
         hasAudio: this.hasAudio,
         hasVideo: this.hasVideo,
 
-        splitAudioAndVideo: true
+        splitAudioAndVideo: true,
+
+        // Safari and iOS native HLS don't play HEVC in MPEG-TS segments
+        segmentType: 'fmp4'
       })
       : this.buildFFmpegLive().getLiveMuxingCommand({
         inputUrl: this.inputLocalUrl,
@@ -43,7 +46,10 @@ export class FFmpegTranscodingWrapper extends AbstractTranscodingWrapper {
         masterPlaylistName: this.streamingPlaylist.playlistFilename,
 
         segmentListSize: this.segmentListSize,
-        segmentDuration: getLiveSegmentTime(this.videoLive.latencyMode)
+        segmentDuration: getLiveSegmentTime(this.videoLive.latencyMode),
+
+        segmentType: 'fmp4',
+        isHEVC: this.probe?.streams.some(s => s.codec_type === 'video' && s.codec_name === 'hevc') === true
       })
 
     logger.info('Running local live muxing/transcoding for %s.', this.videoUUID, this.lTags())

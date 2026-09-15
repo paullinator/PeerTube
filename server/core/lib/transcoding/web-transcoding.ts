@@ -3,6 +3,8 @@ import {
   MergeAudioTranscodeOptions,
   TranscodeVODOptionsType,
   VideoTranscodeOptions,
+  ffprobePromise,
+  getVideoStream,
   getVideoStreamDuration
 } from '@peertube/peertube-ffmpeg'
 import { VideoFileStream } from '@peertube/peertube-models'
@@ -45,9 +47,12 @@ export async function optimizeOriginalVideofile (options: {
     const result = await VideoPathManager.Instance.makeAvailableVideoFile(inputVideoFile, async videoInputPath => {
       const videoOutputPath = join(transcodeDirectory, video.id + '-transcoded' + newExtname)
 
-      const transcodeType: TranscodeVODOptionsType = await canDoQuickTranscode(videoInputPath, CONFIG.TRANSCODING.FPS.MAX)
-        ? 'quick-transcode'
-        : 'video'
+      const probe = await ffprobePromise(videoInputPath)
+
+      const transcodeType: TranscodeVODOptionsType =
+        CONFIG.TRANSCODING.COPY_ONLY === true || await canDoQuickTranscode(videoInputPath, CONFIG.TRANSCODING.FPS.MAX, probe)
+          ? 'quick-transcode'
+          : 'video'
 
       const resolution = buildOriginalFileResolution(inputVideoFile.resolution)
       const fps = computeOutputFPS({ inputFPS: inputVideoFile.fps, resolution, isOriginResolution: true, type: 'vod' })
@@ -63,7 +68,9 @@ export async function optimizeOriginalVideofile (options: {
           inputFileMutexReleaser,
 
           resolution,
-          fps
+          fps,
+
+          isHEVC: (await getVideoStream(videoInputPath, probe))?.codec_name === 'hevc'
         })
 
         const { videoFile } = await onWebVideoFileTranscoding({ video, videoOutputPath, deleteWebInputVideoFile: inputVideoFile })
