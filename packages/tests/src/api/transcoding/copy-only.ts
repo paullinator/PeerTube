@@ -63,6 +63,11 @@ describe('Test transcoding copy only', function () {
     expect(masterPlaylist).to.match(options.codecsRegex)
 
     expect(await videoStreamHash(files[0].fileUrl)).to.equal(await videoStreamHash(buildAbsoluteFixturePath(options.fixture)))
+
+    // Apple's player refuses an init segment with an empty sdtp box
+    const res = await fetch(files[0].fileUrl, { headers: { Range: 'bytes=0-8191' } })
+    const initSegment = Buffer.from(await res.arrayBuffer())
+    expect(initSegment.includes(Buffer.from('\0\0\0\x0csdtp', 'latin1'))).to.be.false
   }
 
   before(async function () {

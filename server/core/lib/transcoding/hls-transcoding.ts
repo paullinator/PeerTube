@@ -8,7 +8,9 @@ import {
   HLSTranscodeOptions
 } from '@peertube/peertube-ffmpeg'
 import { retryTransactionWrapper } from '@server/helpers/database-utils.js'
+import { neutralizeEmptySdtpBoxes } from '@server/helpers/ffmpeg/fmp4.js'
 import { deleteFileAndCatch } from '@server/helpers/fs.js'
+import { logger } from '@server/helpers/logger.js'
 import { sequelizeTypescript } from '@server/initializers/database.js'
 import { createTorrentAndSetInfoHash } from '@server/lib/webtorrent.js'
 import { MVideo } from '@server/types/models/index.js'
@@ -111,6 +113,12 @@ export async function onHLSVideoFileTranscoding (options: {
       getHLSResolutionPlaylistFilename(newVideoFile.filename)
     )
     await move(m3u8OutputPath, resolutionPlaylistPath, { overwrite: true })
+
+    // Apple's player refuses the empty sdtp box older FFmpeg versions write in the init segment
+    const emptySdtpBoxes = await neutralizeEmptySdtpBoxes(videoOutputPath)
+    if (emptySdtpBoxes !== 0) {
+      logger.info(`Renamed ${emptySdtpBoxes} empty sdtp box(es) in HLS file of ${video.uuid}`, { videoUUID: video.uuid })
+    }
 
     // Move video file
     await move(videoOutputPath, videoFilePath, { overwrite: true })
