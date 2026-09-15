@@ -1,5 +1,12 @@
 import { pick } from '@peertube/peertube-core-utils'
-import { canCopyForHLS, getVideoStreamDuration, HLSFromTSTranscodeOptions, HLSTranscodeOptions } from '@peertube/peertube-ffmpeg'
+import {
+  canCopyForHLS,
+  ffprobePromise,
+  getVideoStream,
+  getVideoStreamDuration,
+  HLSFromTSTranscodeOptions,
+  HLSTranscodeOptions
+} from '@peertube/peertube-ffmpeg'
 import { retryTransactionWrapper } from '@server/helpers/database-utils.js'
 import { deleteFileAndCatch } from '@server/helpers/fs.js'
 import { sequelizeTypescript } from '@server/initializers/database.js'
@@ -191,6 +198,8 @@ async function generateHlsPlaylistCommon (options: {
   const resolutionPlaylistFilename = getHLSResolutionPlaylistFilename(videoFilename)
   const m3u8OutputPath = join(videoTranscodedBasePath, resolutionPlaylistFilename)
 
+  const inputProbe = await ffprobePromise(videoInputPath)
+
   const transcodeOptions: HLSTranscodeOptions | HLSFromTSTranscodeOptions = {
     type,
 
@@ -202,12 +211,13 @@ async function generateHlsPlaylistCommon (options: {
     resolution,
     fps,
 
-    copyCodecs: !separatedAudioInputPath && await canCopyForHLS({ fps, resolution, path: videoInputPath }),
+    copyCodecs: !separatedAudioInputPath &&
+      (CONFIG.TRANSCODING.COPY_ONLY === true || await canCopyForHLS({ fps, resolution, path: videoInputPath }, inputProbe)),
 
     separatedAudio,
 
     isAAC,
-    isHEVC,
+    isHEVC: isHEVC ?? (await getVideoStream(videoInputPath, inputProbe))?.codec_name === 'hevc',
 
     inputFileMutexReleaser,
 

@@ -640,6 +640,12 @@ video_channels:
 transcoding:
   enabled: true
 
+  # Never re-encode uploads: copy the original video and audio streams as is into HLS (or a web video)
+  # The original resolution and FPS are kept, other resolutions and the podcast audio file are not generated
+  # Viewers' browsers must be able to decode the uploaded codecs (HEVC plays in Safari and hardware-accelerated Chrome/Edge)
+  # Uploads with streams that cannot be stored in MP4 (e.g. Vorbis audio) fail to transcode
+  copy_only: false
+
   original_file:
     # If false the uploaded file is deleted after transcoding
     # If yes it is not deleted but moved in a dedicated folder or object storage

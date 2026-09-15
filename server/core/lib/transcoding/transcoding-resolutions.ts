@@ -3,7 +3,7 @@ import { VideoResolution, VideoResolutionType } from '@peertube/peertube-models'
 import { CONFIG } from '@server/initializers/config.js'
 
 export function buildOriginalFileResolution (inputResolution: number) {
-  if (CONFIG.TRANSCODING.ALWAYS_TRANSCODE_ORIGINAL_RESOLUTION === true) {
+  if (CONFIG.TRANSCODING.ALWAYS_TRANSCODE_ORIGINAL_RESOLUTION === true || CONFIG.TRANSCODING.COPY_ONLY === true) {
     return toEven(inputResolution)
   }
 
@@ -35,6 +35,13 @@ export function computeResolutionsToTranscode (options: {
   forceAudioResolution?: boolean
 }) {
   const { input, type, includeInput, strictLower, hasAudio, forceAudioResolution } = options
+
+  // Copy only: the original resolution is copied as is and nothing else is encoded
+  if (type === 'vod' && CONFIG.TRANSCODING.COPY_ONLY === true) {
+    return includeInput
+      ? [ toEven(input) ]
+      : []
+  }
 
   const configResolutions = type === 'vod'
     ? CONFIG.TRANSCODING.RESOLUTIONS

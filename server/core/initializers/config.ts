@@ -645,6 +645,9 @@ const CONFIG = {
     get ENABLED () {
       return config.get<boolean>('transcoding.enabled')
     },
+    get COPY_ONLY () {
+      return config.get<boolean>('transcoding.copy_only')
+    },
     ORIGINAL_FILE: {
       get KEEP () {
         return config.get<boolean>('transcoding.original_file.keep')

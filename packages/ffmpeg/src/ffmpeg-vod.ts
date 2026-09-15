@@ -23,6 +23,9 @@ export interface BaseTranscodeVODOptions {
 
   resolution: number
   fps: number
+
+  // Input video is HEVC: copied streams get the hvc1 tag
+  isHEVC?: boolean
 }
 
 export interface HLSTranscodeOptions extends BaseTranscodeVODOptions {
@@ -40,7 +43,6 @@ export interface HLSFromTSTranscodeOptions extends BaseTranscodeVODOptions {
   type: 'hls-from-ts'
 
   isAAC: boolean
-  isHEVC?: boolean
 
   hlsPlaylist: {
     videoFilename: string
@@ -143,13 +145,15 @@ export class FFmpegVOD {
     })
   }
 
-  private buildQuickTranscodeCommand (_options: TranscodeVODOptions) {
+  private buildQuickTranscodeCommand (options: TranscodeVODOptions) {
     const command = this.commandWrapper.getCommand()
 
     presetCopy(this.commandWrapper)
 
     command.outputOption('-map_metadata -1') // strip all metadata
       .outputOption('-movflags faststart')
+
+    this.addHEVCTagIfNeeded(command, options)
   }
 
   // ---------------------------------------------------------------------------
@@ -206,6 +210,8 @@ export class FFmpegVOD {
         withAudio: !options.separatedAudio || !options.resolution,
         withVideo: !options.separatedAudio || !!options.resolution
       })
+
+      this.addHEVCTagIfNeeded(command, options)
     } else {
       // If we cannot copy codecs, we do not copy them at all to prevent issues like audio desync
       // See for example https://github.com/Chocobozzz/PeerTube/issues/6438
@@ -235,12 +241,14 @@ export class FFmpegVOD {
       command.outputOption('-bsf:a aac_adtstoasc')
     }
 
-    if (options.isHEVC) {
-      // ffmpeg tags HEVC as hev1 in mp4 by default, which Apple players refuse
-      command.outputOption('-tag:v hvc1')
-    }
+    this.addHEVCTagIfNeeded(command, options)
 
     this.addCommonHLSVODCommandOptions(command, videoPath)
+  }
+
+  // ffmpeg tags copied HEVC as hev1 in mp4 by default, which Apple players refuse
+  private addHEVCTagIfNeeded (command: FfmpegCommand, options: BaseTranscodeVODOptions) {
+    if (options.isHEVC) command.outputOption('-tag:v hvc1')
   }
 
   private addCommonHLSVODCommandOptions (command: FfmpegCommand, outputPath: string) {

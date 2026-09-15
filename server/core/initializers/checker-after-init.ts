@@ -249,6 +249,10 @@ function checkTranscodingConfig () {
     if (CONFIG.TRANSCODING.CONCURRENCY <= 0) {
       throw new Error('Transcoding concurrency should be > 0')
     }
+
+    if (CONFIG.TRANSCODING.COPY_ONLY === true && CONFIG.TRANSCODING.REMOTE_RUNNERS.ENABLED === true) {
+      throw new Error('transcoding.copy_only cannot be enabled with remote runners, they always re-encode videos')
+    }
   }
 
   if (CONFIG.IMPORT.VIDEOS.HTTP.ENABLED || CONFIG.IMPORT.VIDEOS.TORRENT.ENABLED) {
