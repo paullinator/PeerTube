@@ -49,6 +49,19 @@ export const VIDEO_CHANNEL_SUPPORT_VALIDATOR: BuildFormValidator = {
   }
 }
 
+export const VIDEO_CHANNEL_PASSWORD_VALIDATOR: BuildFormValidator = {
+  VALIDATORS: [
+    Validators.required,
+    Validators.minLength(2),
+    Validators.maxLength(100)
+  ],
+  MESSAGES: {
+    required: $localize`Password is required.`,
+    minlength: $localize`Password must be at least 2 characters long.`,
+    maxlength: $localize`Password cannot be more than 100 characters long.`
+  }
+}
+
 export const VIDEO_CHANNEL_EXTERNAL_URL_VALIDATOR: BuildFormValidator = {
   VALIDATORS: [
     Validators.required,

@@ -9,6 +9,8 @@ import { CONFIG } from '../initializers/config.js'
 import {
   AP_CLEANER,
   CONTACT_FORM_LIFETIME,
+  EMAIL_LOGIN_LIFETIME,
+  EMAIL_LOGIN_OTP_LENGTH,
   EMAIL_VERIFY_LIFETIME,
   RESUMABLE_UPLOAD_SESSION_LIFETIME,
   TWO_FACTOR_AUTH_REQUEST_TOKEN_LIFETIME,
@@ -214,6 +216,30 @@ class Redis {
 
   async getRegistrationVerifyEmailLink (registrationId: number) {
     return this.getValue(this.generateRegistrationVerifyEmailKey(registrationId))
+  }
+
+  /* ************ Passwordless email login ************ */
+
+  // Store a magic-link verification string + a short numeric OTP, both valid for the same email
+  async setEmailLoginVerification (email: string) {
+    const verificationString = await generateRandomString(32)
+
+    let otp = ''
+    for (let i = 0; i < EMAIL_LOGIN_OTP_LENGTH; i++) {
+      otp += Math.floor(Math.random() * 10).toString()
+    }
+
+    await this.setObject(this.generateEmailLoginKey(email), { verificationString, otp }, EMAIL_LOGIN_LIFETIME)
+
+    return { verificationString, otp }
+  }
+
+  async getEmailLoginVerification (email: string): Promise<{ verificationString: string, otp: string }> {
+    return this.getObject(this.generateEmailLoginKey(email))
+  }
+
+  async removeEmailLoginVerification (email: string) {
+    return this.deleteKey(this.generateEmailLoginKey(email))
   }
 
   /* ************ Contact form per IP ************ */
@@ -485,6 +511,10 @@ class Redis {
 
   private generateRegistrationVerifyEmailKey (registrationId: number) {
     return 'verify-email-registration-' + registrationId
+  }
+
+  private generateEmailLoginKey (email: string) {
+    return 'email-login-' + sha256(CONFIG.SECRETS.PEERTUBE + '-' + email.toLowerCase())
   }
 
   generateSessionIdViewKey (sessionId: string, videoUUID: string) {

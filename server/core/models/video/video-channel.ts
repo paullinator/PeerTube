@@ -1,4 +1,12 @@
-import { ActivityPubActor, ActivityUrlObject, VideoChannel, VideoChannelSummary, VideoPrivacy } from '@peertube/peertube-models'
+import {
+  ActivityPubActor,
+  ActivityUrlObject,
+  VideoChannel,
+  VideoChannelAccessMode,
+  VideoChannelAccessModeType,
+  VideoChannelSummary,
+  VideoPrivacy
+} from '@peertube/peertube-models'
 import { AttributesOnly } from '@peertube/peertube-typescript-utils'
 import { CONFIG } from '@server/initializers/config.js'
 import { getLocalActorPlayerSettingsActivityPubUrl } from '@server/lib/activitypub/url.js'
@@ -48,7 +56,10 @@ import { ActorModel, actorSummaryAttributes } from '../actor/actor.js'
 import { ServerModel, serverSummaryAttributes } from '../server/server.js'
 import { buildSQLAttributes, buildTrigramSearchIndex, getSort, SequelizeModel, setAsUpdated, throwIfNotValid } from '../shared/index.js'
 import { ListVideoChannelsOptions, VideoChannelListQueryBuilder } from './sql/channel/video-channel-list-query-builder.js'
+import { VideoChannelAccessModel } from './video-channel-access.js'
+import { VideoChannelAllowedAccountModel } from './video-channel-allowed-account.js'
 import { VideoChannelCollaboratorModel } from './video-channel-collaborator.js'
+import { VideoChannelPasswordModel } from './video-channel-password.js'
 import { VideoPlaylistModel } from './video-playlist.js'
 import { VideoModel } from './video.js'
 
@@ -218,6 +229,24 @@ export class VideoChannelModel extends SequelizeModel<VideoChannelModel> {
   })
   declare VideoChannelCollaborators: Awaited<VideoChannelCollaboratorModel>[]
 
+  @HasOne(() => VideoChannelAccessModel, {
+    foreignKey: 'channelId',
+    onDelete: 'CASCADE'
+  })
+  declare VideoChannelAccess: Awaited<VideoChannelAccessModel>
+
+  @HasMany(() => VideoChannelPasswordModel, {
+    foreignKey: 'channelId',
+    onDelete: 'CASCADE'
+  })
+  declare VideoChannelPasswords: Awaited<VideoChannelPasswordModel>[]
+
+  @HasMany(() => VideoChannelAllowedAccountModel, {
+    foreignKey: 'channelId',
+    onDelete: 'CASCADE'
+  })
+  declare VideoChannelAllowedAccounts: Awaited<VideoChannelAllowedAccountModel>[]
+
   @HasOne(() => ActorModel, {
     foreignKey: {
       allowNull: true
@@ -370,7 +399,10 @@ export class VideoChannelModel extends SequelizeModel<VideoChannelModel> {
       ],
       where: {
         [Op.and]: [
-          literal(`EXISTS (SELECT 1 FROM "video" WHERE "privacy" = ${VideoPrivacy.PUBLIC} AND "channelId" = "VideoChannelModel"."id")`)
+          literal(
+            `EXISTS (SELECT 1 FROM "video" ` +
+            `WHERE "privacy" IN (${VideoPrivacy.PUBLIC}, ${VideoPrivacy.CHANNEL}) AND "channelId" = "VideoChannelModel"."id")`
+          )
         ]
       }
     }
@@ -559,6 +591,8 @@ export class VideoChannelModel extends SequelizeModel<VideoChannelModel> {
 
     const totalViews = this.get('totalViews') as number
 
+    const accessMode = this.get('accessMode') as VideoChannelAccessModeType
+
     const actor = this.Actor.toFormattedJSON()
     const videoChannel = {
       id: this.id,
@@ -573,6 +607,8 @@ export class VideoChannelModel extends SequelizeModel<VideoChannelModel> {
       videosCount,
       viewsPerDay,
       totalViews,
+
+      accessMode: accessMode || VideoChannelAccessMode.PUBLIC,
 
       avatars: actor.avatars
     }

@@ -21,7 +21,8 @@ export class PrivacyBadgeComponent implements OnChanges {
     [VideoPrivacy.INTERNAL]: 'badge-yellow',
     [VideoPrivacy.PRIVATE]: 'badge-grey',
     [VideoPrivacy.PASSWORD_PROTECTED]: 'badge-purple',
-    [VideoPrivacy.UNLISTED]: 'badge-blue'
+    [VideoPrivacy.UNLISTED]: 'badge-blue',
+    [VideoPrivacy.CHANNEL]: 'badge-purple'
   }
 
   private playlistBadges: { [id in VideoPlaylistPrivacyType]: string } = {

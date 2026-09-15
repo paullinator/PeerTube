@@ -3,8 +3,10 @@ import * as Sequelize from 'sequelize'
 import { VideoChannelModel } from '../models/video/video-channel.js'
 import { VideoModel } from '../models/video/video.js'
 import { MAccountId, MChannelId } from '../types/models/index.js'
+import { sequelizeTypescript } from '../initializers/database.js'
 import { getLocalVideoChannelActivityPubUrl } from './activitypub/url.js'
-import { federateVideoIfNeeded } from './activitypub/videos/index.js'
+import { canVideoBeFederated, federateVideoIfNeeded } from './activitypub/videos/index.js'
+import { sendDeleteVideo } from './activitypub/send/send-delete.js'
 import { buildActorInstance } from './local-actor.js'
 
 export async function createLocalVideoChannelWithoutKeys (body: VideoChannelCreate, account: MAccountId, t: Sequelize.Transaction) {
@@ -31,5 +33,19 @@ export async function federateAllVideosOfChannel (videoChannel: MChannelId) {
     const video = await VideoModel.loadFull(videoId)
 
     await federateVideoIfNeeded(video, false)
+  }
+}
+
+// When a channel becomes restricted, its videos must no longer live on remote instances
+export async function unfederateAllVideosOfChannel (videoChannel: MChannelId) {
+  const videoIds = await VideoModel.getAllIdsFromChannel({ videoChannel, count: 1000 })
+
+  for (const videoId of videoIds) {
+    const video = await VideoModel.loadFull(videoId)
+
+    // Only previously-federated videos need an explicit delete sent to followers
+    if (!canVideoBeFederated(video)) continue
+
+    await sequelizeTypescript.transaction(t => sendDeleteVideo({ video, deleteForPrivacyChange: true, transaction: t }))
   }
 }

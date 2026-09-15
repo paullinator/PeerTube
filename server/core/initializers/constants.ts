@@ -62,7 +62,7 @@ import { CONFIG, registerConfigChangedHandler } from './config.js'
 
 // ---------------------------------------------------------------------------
 
-export const LAST_MIGRATION_VERSION = 1040
+export const LAST_MIGRATION_VERSION = 1046
 
 // ---------------------------------------------------------------------------
 
@@ -409,7 +409,8 @@ export const CONSTRAINTS_FIELDS = {
     DESCRIPTION: { min: 3, max: 1000 }, // Length
     SUPPORT: { min: 3, max: 1000 }, // Length
     EXTERNAL_CHANNEL_URL: { min: 3, max: 2000 }, // Length
-    URL: { min: 3, max: 2000 } // Length
+    URL: { min: 3, max: 2000 }, // Length
+    PASSWORD: { min: 2, max: 100 } // Length
   },
   VIDEO_CHANNEL_SYNCS: {
     EXTERNAL_CHANNEL_URL: { min: 3, max: 2000 } // Length
@@ -648,7 +649,8 @@ export const VIDEO_PRIVACIES: { [id in VideoPrivacyType]: string } = {
   [VideoPrivacy.UNLISTED]: 'Unlisted',
   [VideoPrivacy.PRIVATE]: 'Private',
   [VideoPrivacy.INTERNAL]: 'Internal',
-  [VideoPrivacy.PASSWORD_PROTECTED]: 'Password protected'
+  [VideoPrivacy.PASSWORD_PROTECTED]: 'Password protected',
+  [VideoPrivacy.CHANNEL]: 'Channel'
 }
 
 export const VIDEO_STATES: { [id in VideoStateType]: string } = {
@@ -952,6 +954,12 @@ export let JWT_TOKEN_USER_EXPORT_FILE_LIFETIME: `${number} minutes` | `${number}
 
 export const EMAIL_VERIFY_LIFETIME = 60000 * 60 // 60 minutes
 
+// Passwordless email login (magic link + OTP)
+export const EMAIL_LOGIN_LIFETIME = 60000 * 15 // 15 minutes
+export const EMAIL_LOGIN_OTP_LENGTH = 6
+// Email login establishes a long-lived (~1 month) session
+export const EMAIL_LOGIN_REFRESH_TOKEN_LIFETIME = 1000 * 3600 * 24 * 30 // 30 days
+
 export const NSFW_POLICY_TYPES: { [id: string]: NSFWPolicyType } = {
   DO_NOT_LIST: 'do_not_list',
   WARN: 'warn',
@@ -1216,6 +1224,19 @@ export const REDUNDANCY = {
 export const ACCEPT_HEADERS = [ 'html', 'application/json' ].concat(ACTIVITY_PUB.POTENTIAL_ACCEPT_HEADERS)
 export const LANGUAGE_COOKIE_NAME = 'clientLanguage'
 export const LANGUAGE_HEADER = 'x-peertube-language'
+
+export const CHANNEL_ACCESS = {
+  PASSWORD_HEADER: 'x-peertube-channel-password',
+  TOKEN_HEADER: 'x-peertube-channel-token',
+  COOKIE_PREFIX: 'peertube-channel-access-',
+  // How long an issued channel access token (and the cookie storing it) stays valid
+  TOKEN_LIFETIME: 1000 * 3600 * 24 * 30 // 30 days
+}
+
+export const CHANNEL_INVITE = {
+  // Length of the random invite code (base58 chars). 58^6 ~= 38 billion combinations.
+  CODE_LENGTH: 6
+}
 
 export const OTP = {
   HEADER_NAME: 'x-peertube-otp',

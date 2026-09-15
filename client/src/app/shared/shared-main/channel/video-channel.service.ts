@@ -5,9 +5,15 @@ import { formatICU } from '@app/helpers'
 import {
   ActorImage,
   ResultList,
+  VideoChannelAccess,
+  VideoChannelAccessUpdate,
   VideoChannelActivity,
   VideoChannelCollaborator,
   VideoChannelCreate,
+  VideoChannelInviteCreate,
+  VideoChannelInviteInfo,
+  VideoChannelInviteRedeemResult,
+  VideoChannelInviteWithURL,
   VideoChannel as VideoChannelServer,
   VideoChannelUpdate,
   VideosImportInChannelCreate
@@ -189,6 +195,73 @@ export class VideoChannelService {
     const url = VideoChannelService.BASE_VIDEO_CHANNEL_URL + channelName + '/collaborators/' + collaboratorId
 
     return this.authHttp.delete(url)
+      .pipe(catchError(err => this.restExtractor.handleError(err)))
+  }
+
+  // ---------------------------------------------------------------------------
+  // Per-channel access control
+
+  getChannelAccess (channelName: string) {
+    const url = VideoChannelService.BASE_VIDEO_CHANNEL_URL + channelName + '/access'
+
+    return this.authHttp.get<VideoChannelAccess>(url)
+      .pipe(catchError(err => this.restExtractor.handleError(err)))
+  }
+
+  updateChannelAccess (channelName: string, body: VideoChannelAccessUpdate) {
+    const url = VideoChannelService.BASE_VIDEO_CHANNEL_URL + channelName + '/access'
+
+    return this.authHttp.put(url, body)
+      .pipe(catchError(err => this.restExtractor.handleError(err)))
+  }
+
+  rotateChannelAccess (channelName: string) {
+    const url = VideoChannelService.BASE_VIDEO_CHANNEL_URL + channelName + '/access/rotate'
+
+    return this.authHttp.post(url, {})
+      .pipe(catchError(err => this.restExtractor.handleError(err)))
+  }
+
+  requestChannelAccess (channelName: string, password?: string) {
+    const url = VideoChannelService.BASE_VIDEO_CHANNEL_URL + channelName + '/access/request'
+
+    return this.authHttp.post<{ success: boolean }>(url, { password }, { withCredentials: true })
+      .pipe(catchError(err => this.restExtractor.handleError(err)))
+  }
+
+  // ---------------------------------------------------------------------------
+  // Channel invite links
+
+  static BASE_INVITE_URL = environment.apiUrl + '/api/v1/video-channel-invites/'
+
+  listChannelInvites (channelName: string) {
+    const url = VideoChannelService.BASE_VIDEO_CHANNEL_URL + channelName + '/invites'
+
+    return this.authHttp.get<ResultList<VideoChannelInviteWithURL>>(url)
+      .pipe(catchError(err => this.restExtractor.handleError(err)))
+  }
+
+  createChannelInvite (channelName: string, body: VideoChannelInviteCreate) {
+    const url = VideoChannelService.BASE_VIDEO_CHANNEL_URL + channelName + '/invites'
+
+    return this.authHttp.post<VideoChannelInviteWithURL>(url, body)
+      .pipe(catchError(err => this.restExtractor.handleError(err)))
+  }
+
+  removeChannelInvite (channelName: string, inviteId: number) {
+    const url = VideoChannelService.BASE_VIDEO_CHANNEL_URL + channelName + '/invites/' + inviteId
+
+    return this.authHttp.delete(url)
+      .pipe(catchError(err => this.restExtractor.handleError(err)))
+  }
+
+  getChannelInviteInfo (code: string) {
+    return this.authHttp.get<VideoChannelInviteInfo>(VideoChannelService.BASE_INVITE_URL + code)
+      .pipe(catchError(err => this.restExtractor.handleError(err)))
+  }
+
+  redeemChannelInvite (code: string) {
+    return this.authHttp.post<VideoChannelInviteRedeemResult>(VideoChannelService.BASE_INVITE_URL + code + '/redeem', {})
       .pipe(catchError(err => this.restExtractor.handleError(err)))
   }
 

@@ -112,6 +112,7 @@ export interface CustomConfig {
     requiresApproval: boolean
     requiresEmailVerification: boolean
     minimumAge: number
+    emailOnly: boolean
   }
 
   admin: {

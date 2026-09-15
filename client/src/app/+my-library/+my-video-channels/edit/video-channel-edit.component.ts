@@ -73,6 +73,14 @@ export class VideoChannelEditComponent implements OnInit, OnDestroy {
         },
 
         {
+          type: 'link',
+          icon: 'shield',
+          label: $localize`Access`,
+          routerLink: 'access',
+          isDisplayed: () => this.mode === 'update'
+        },
+
+        {
           type: 'separator'
         },
 

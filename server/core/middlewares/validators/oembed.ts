@@ -112,6 +112,7 @@ const oembedValidator = [
 
       if (
         video.privacy === VideoPrivacy.PUBLIC ||
+        video.privacy === VideoPrivacy.CHANNEL ||
         (video.privacy === VideoPrivacy.UNLISTED && isUUIDValid(elementId) === true) ||
         video.VideoBlacklist
       ) {

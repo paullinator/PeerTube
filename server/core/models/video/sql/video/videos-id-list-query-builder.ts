@@ -505,13 +505,15 @@ export class VideosIdListQueryBuilder extends AbstractRunQuery {
   }
 
   private wherePrivacyAvailable (user?: MUserAccountId) {
+    // CHANNEL videos are discoverable like public ones (playback is gated separately by the channel)
     if (user) {
       this.and.push(
-        `("video"."privacy" = ${VideoPrivacy.PUBLIC} OR "video"."privacy" = ${VideoPrivacy.INTERNAL})`
+        `("video"."privacy" = ${VideoPrivacy.PUBLIC} OR "video"."privacy" = ${VideoPrivacy.INTERNAL} ` +
+        `OR "video"."privacy" = ${VideoPrivacy.CHANNEL})`
       )
-    } else { // Or only public videos
+    } else { // Or only public/channel videos
       this.and.push(
-        `"video"."privacy" = ${VideoPrivacy.PUBLIC}`
+        `("video"."privacy" = ${VideoPrivacy.PUBLIC} OR "video"."privacy" = ${VideoPrivacy.CHANNEL})`
       )
     }
   }

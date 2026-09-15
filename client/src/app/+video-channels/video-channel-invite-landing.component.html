@@ -1,0 +1,20 @@
+<div class="margin-content my-5">
+  @if (loaded) {
+    @if (invalid) {
+      <h1 i18n>Invite link unavailable</h1>
+      <p i18n>This invite link is invalid, has expired or has reached its maximum number of uses.</p>
+
+      <a routerLink="/" class="peertube-button-link primary-button" i18n>Go back home</a>
+    } @else if (!isLoggedIn()) {
+      <h1 i18n>You've been invited to {{ channelDisplayName }}</h1>
+      <p i18n>Create an account or log in to get access to this channel.</p>
+
+      <div class="d-flex gap-3">
+        <button (click)="goToSignup()" class="peertube-button primary-button" i18n>Create an account</button>
+        <button (click)="goToLogin()" class="peertube-button secondary-button" i18n>Log in</button>
+      </div>
+    } @else {
+      <h1 i18n>Joining {{ channelDisplayName }}…</h1>
+    }
+  }
+</div>

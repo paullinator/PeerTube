@@ -444,7 +444,10 @@ export class AccountModel extends SequelizeModel<AccountModel> {
           required: true,
           where: {
             [Op.and]: [
-              literal(`EXISTS (SELECT 1 FROM "video" WHERE "privacy" = ${VideoPrivacy.PUBLIC} AND "channelId" = "VideoChannels"."id")`)
+              literal(
+                `EXISTS (SELECT 1 FROM "video" ` +
+                `WHERE "privacy" IN (${VideoPrivacy.PUBLIC}, ${VideoPrivacy.CHANNEL}) AND "channelId" = "VideoChannels"."id")`
+              )
             ]
           }
         }

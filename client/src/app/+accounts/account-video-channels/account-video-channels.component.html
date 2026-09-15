@@ -22,6 +22,10 @@
             <a class="text-decoration-none" [routerLink]="getVideoChannelLink(videoChannel)" i18n-title title="See this video channel">
               {{ videoChannel.displayName }}
             </a>
+
+            @if (videoChannel.isRestricted()) {
+              <my-global-icon class="d-inline-block ms-2" iconName="shield" i18n-title title="Restricted channel"></my-global-icon>
+            }
           </h2>
 
           <div class="actor-counters">

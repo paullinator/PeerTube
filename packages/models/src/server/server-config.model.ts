@@ -223,6 +223,7 @@ export interface ServerConfig {
     allowedForCurrentIP: boolean
     requiresEmailVerification: boolean
     requiresApproval: boolean
+    emailOnly: boolean
     minimumAge: number
   }
 

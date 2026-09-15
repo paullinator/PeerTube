@@ -14,6 +14,7 @@ import express from 'express'
 import { body, param, query, ValidationChain } from 'express-validator'
 import { isUserDisplayNameValid, isUserPasswordValid, isUserUsernameValid } from '../../../helpers/custom-validators/users.js'
 import { isVideoChannelDisplayNameValid, isVideoChannelUsernameValid } from '../../../helpers/custom-validators/video-channels.js'
+import { VideoChannelInviteModel } from '@server/models/video/video-channel-invite.js'
 import { isSignupAllowed, isSignupAllowedForCurrentIP, SignupMode } from '../../../lib/signup.js'
 import { areValidationErrors, checkUsernameOrEmailDoNotAlreadyExist } from '../shared/index.js'
 import { checkRegistrationHandlesDoNotAlreadyExist, checkRegistrationIdExist } from './shared/user-registrations.js'
@@ -53,8 +54,36 @@ const usersRequestRegistrationValidator = [
 
 // ---------------------------------------------------------------------------
 
+// A valid channel invite code authorizes sign-up (even if disabled/approval-gated) and is
+// loaded into res.locals so later middlewares can bypass the signup gates and the controller
+// can grant channel access after the account is created.
+const loadOptionalChannelInviteForSignup = [
+  async (req: express.Request, res: express.Response, next: express.NextFunction) => {
+    const code = req.body.channelInviteCode
+    if (!code) return next()
+
+    const invite = await VideoChannelInviteModel.loadByCode(code)
+    if (!invite || !invite.isRedeemable()) {
+      return res.fail({
+        status: HttpStatusCode.FORBIDDEN_403,
+        message: req.t('This invite link is invalid, has expired or reached its maximum number of uses')
+      })
+    }
+
+    res.locals.videoChannelInvite = invite
+
+    return next()
+  }
+]
+
 const determineSignupMode = [
   async (req: express.Request, res: express.Response, next: express.NextFunction) => {
+    // An invite always results in a direct registration (no approval step)
+    if (res.locals.videoChannelInvite) {
+      res.locals.signupMode = 'direct-registration'
+      return next()
+    }
+
     const { registrationReason, requiresApproval } = await Hooks.wrapObject(
       {
         requiresApproval: CONFIG.SIGNUP.REQUIRES_APPROVAL,
@@ -77,6 +106,9 @@ const determineSignupMode = [
 
 function ensureUserRegistrationAllowedFactory (sm?: SignupMode) {
   return async (req: express.Request, res: express.Response, next: express.NextFunction) => {
+    // A valid invite code bypasses the regular signup gate (enabled/approval/limit)
+    if (res.locals.videoChannelInvite) return next()
+
     const signupMode = sm || res.locals.signupMode // sm is provided by /registrations/request endpoint
     const allowedParams = {
       body: req.body,
@@ -105,6 +137,9 @@ function ensureUserRegistrationAllowedFactory (sm?: SignupMode) {
 
 const ensureUserRegistrationAllowedForIP = [
   (req: express.Request, res: express.Response, next: express.NextFunction) => {
+    // A valid invite code bypasses the IP allow-list
+    if (res.locals.videoChannelInvite) return next()
+
     const allowed = isSignupAllowedForCurrentIP(req.ip)
 
     if (allowed === false) {
@@ -189,6 +224,7 @@ export {
   ensureUserRegistrationAllowedForIP,
   getRegistrationValidator,
   listRegistrationsValidator,
+  loadOptionalChannelInviteForSignup,
   usersRegistrationValidator,
   usersRequestRegistrationValidator
 }

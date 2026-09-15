@@ -1,5 +1,6 @@
 export * from './video-blacklist.js'
 export * from './video-captions.js'
+export * from './video-channel-invites.js'
 export * from './video-channel-sync.js'
 export * from './video-channels.js'
 export * from './video-chapters.js'

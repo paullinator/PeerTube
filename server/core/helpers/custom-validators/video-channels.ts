@@ -22,11 +22,16 @@ function isVideoChannelSupportValid (value: string) {
   return value === null || (exists(value) && validator.default.isLength(value, VIDEO_CHANNELS_CONSTRAINTS_FIELDS.SUPPORT))
 }
 
+function isVideoChannelPasswordValid (value: string) {
+  return exists(value) && validator.default.isLength(value, VIDEO_CHANNELS_CONSTRAINTS_FIELDS.PASSWORD)
+}
+
 // ---------------------------------------------------------------------------
 
 export {
   isVideoChannelUsernameValid,
   isVideoChannelDescriptionValid,
   isVideoChannelDisplayNameValid,
-  isVideoChannelSupportValid
+  isVideoChannelSupportValid,
+  isVideoChannelPasswordValid
 }

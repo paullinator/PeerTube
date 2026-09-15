@@ -9,7 +9,7 @@ import { CONFIG } from '../../../initializers/config.js'
 import { MEMOIZE_TTL, WEBSERVER } from '../../../initializers/constants.js'
 import { VideoModel } from '../../../models/video/video.js'
 import { MVideo, MVideoSeo } from '../../../types/models/index.js'
-import { isVideoInPrivateDirectory } from '../../video-privacy.js'
+import { isVideoHiddenFromDiscovery } from '../../video-privacy.js'
 import { buildEmptyEmbedHTML } from './common.js'
 import { PageHtml } from './page-html.js'
 import { TagsHtml } from './tags-html.js'
@@ -32,7 +32,7 @@ export class VideoHtml {
     }
 
     // Let Angular application handle errors
-    if (!video || isVideoInPrivateDirectory(video.privacy) || video.VideoBlacklist) {
+    if (!video || isVideoHiddenFromDiscovery(video.privacy) || video.VideoBlacklist) {
       res.status(HttpStatusCode.NOT_FOUND_404)
       return html
     }
@@ -57,7 +57,7 @@ export class VideoHtml {
 
     const [ html, video ] = await Promise.all([ PageHtml.getEmbedHTML(), videoPromise ])
 
-    if (!video || isVideoInPrivateDirectory(video.privacy) || video.VideoBlacklist) {
+    if (!video || isVideoHiddenFromDiscovery(video.privacy) || video.VideoBlacklist) {
       return buildEmptyEmbedHTML({ html, video })
     }
 

@@ -1,19 +1,22 @@
 import { CdkStep, CdkStepperNext, CdkStepperPrevious } from '@angular/cdk/stepper'
 import { Component, OnInit, inject, viewChild } from '@angular/core'
 import { FormGroup } from '@angular/forms'
-import { ActivatedRoute, RouterLink } from '@angular/router'
+import { ActivatedRoute, Router, RouterLink } from '@angular/router'
 import { AuthService, ServerService } from '@app/core'
 import { HooksService } from '@app/core/plugins/hooks.service'
 import { InstanceAboutAccordionComponent } from '@app/shared/shared-instance/instance-about-accordion.component'
 import { AlertComponent } from '@app/shared/shared-main/common/alert.component'
+import { getExternalAuthHref } from '@peertube/peertube-core-utils'
 import {
   UserRegistrationState,
   PeerTubeProblemDocument,
+  RegisteredExternalAuthConfig,
   ServerConfig,
   ServerStats,
   UserRegister,
   UserRegistration
 } from '@peertube/peertube-models'
+import { environment } from '../../../environments/environment'
 import { LoaderComponent } from '../../shared/shared-main/common/loader.component'
 import { SignupLabelComponent } from '../../shared/shared-main/users/signup-label.component'
 import { SignupStepTitleComponent } from '../shared/signup-step-title.component'
@@ -49,6 +52,7 @@ import { RegisterStepUserComponent } from './steps/register-step-user.component'
 })
 export class RegisterComponent implements OnInit {
   private route = inject(ActivatedRoute)
+  private router = inject(Router)
   private authService = inject(AuthService)
   private signupService = inject(SignupService)
   private server = inject(ServerService)
@@ -85,6 +89,10 @@ export class RegisterComponent implements OnInit {
 
   signupDisabled = false
 
+  // When signing up through a channel invite link, sign-up is allowed even if disabled,
+  // approval is bypassed, and the new account is redirected to the channel afterwards.
+  channelInviteCode: string
+
   serverStats: ServerStats
 
   private serverConfig: ServerConfig
@@ -95,6 +103,8 @@ export class RegisterComponent implements OnInit {
   }
 
   get requiresApproval () {
+    if (this.channelInviteCode) return false
+
     return this._requiresApproval ?? this.serverConfig.signup.requiresApproval
   }
 
@@ -110,10 +120,36 @@ export class RegisterComponent implements OnInit {
     return this.serverConfig.instance.name
   }
 
+  getExternalLogins () {
+    return this.serverConfig.plugin.registeredExternalAuths
+  }
+
+  hasExternalLogins () {
+    return this.getExternalLogins().length !== 0
+  }
+
+  getAuthHref (auth: RegisteredExternalAuthConfig) {
+    return getExternalAuthHref(environment.apiUrl, auth)
+  }
+
   ngOnInit () {
     this.serverConfig = this.route.snapshot.data.serverConfig
 
-    if (this.serverConfig.signup.allowed === false || this.serverConfig.signup.allowedForCurrentIP === false) {
+    this.channelInviteCode = this.route.snapshot.queryParams['channelInviteCode'] ||
+      sessionStorage.getItem('channel-invite-code') ||
+      undefined
+
+    // Email-only signup turns the "request an account" flow into a single email screen (passwordless login)
+    if (this.serverConfig.signup.emailOnly === true) {
+      const queryParams = this.channelInviteCode ? { channelInviteCode: this.channelInviteCode } : {}
+      this.router.navigate([ '/login/email' ], { queryParams })
+      return
+    }
+
+    const signupAllowed = this.serverConfig.signup.allowed && this.serverConfig.signup.allowedForCurrentIP
+
+    // A valid invite code lets the user sign up even if public sign-up is disabled
+    if (!signupAllowed && !this.channelInviteCode) {
       this.signupDisabled = true
       return
     }
@@ -198,7 +234,9 @@ export class RegisterComponent implements OnInit {
 
         registrationReason: termsForm.registrationReason,
 
-        channel
+        channel,
+
+        channelInviteCode: this.channelInviteCode
       },
       'signup',
       'filter:api.signup.registration.create.params'
@@ -234,6 +272,14 @@ export class RegisterComponent implements OnInit {
     this.authService.login({ username: body.username, password: body.password })
       .subscribe({
         next: () => {
+          // The account was already granted channel access server-side during registration.
+          // Route through the invite landing so it resolves the channel and redirects there.
+          if (this.channelInviteCode) {
+            sessionStorage.removeItem('channel-invite-code')
+            this.router.navigate([ '/video-channels/invite', this.channelInviteCode ])
+            return
+          }
+
           this.signupSuccess = true
         },
 

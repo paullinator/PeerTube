@@ -13,8 +13,9 @@ import { sha1 } from '@peertube/peertube-node-utils'
 import { randomBytesPromise } from '@server/helpers/core-utils.js'
 import { isOTPValid } from '@server/helpers/otp.js'
 import { CONFIG } from '@server/initializers/config.js'
+import { OAuthClientModel } from '@server/models/oauth/oauth-client.js'
 import { UserRegistrationModel } from '@server/models/user/user-registration.js'
-import { MOAuthClient } from '@server/types/models/index.js'
+import { MOAuthClient, MUser } from '@server/types/models/index.js'
 import express from 'express'
 import { OTP } from '../../initializers/constants.js'
 import { Hooks } from '../plugins/hooks.js'
@@ -144,9 +145,40 @@ function handleOAuthAuthenticate (
   return oAuthServer.authenticate(new Request(req), new Response(res))
 }
 
+// Mint an OAuth access/refresh token pair for an already authenticated local user
+// (used by passwordless email login). Lets the caller override the refresh token lifetime.
+async function createAuthTokensForUser (options: {
+  user: MUser
+  req: express.Request
+  refreshTokenLifetimeOverride?: number
+}) {
+  const { user, req, refreshTokenLifetimeOverride } = options
+
+  const client = await OAuthClientModel.loadFirstClient()
+  if (!client) throw new Error('Cannot create token: no OAuth client found')
+
+  const now = new Date()
+
+  const token = await buildToken({
+    loginDevice: req.headers['user-agent'],
+    loginIP: req.ip,
+    loginDate: now,
+    lastActivityDevice: req.headers['user-agent'],
+    lastActivityIP: req.ip,
+    lastActivityDate: now
+  })
+
+  if (refreshTokenLifetimeOverride) {
+    token.refreshTokenExpiresAt = new Date(Date.now() + refreshTokenLifetimeOverride)
+  }
+
+  return saveToken(token, client, user, {})
+}
+
 export {
   handleOAuthAuthenticate,
   handleOAuthToken,
+  createAuthTokensForUser,
   InvalidTwoFactorError,
   MissingTwoFactorError,
   TooLongPasswordError,

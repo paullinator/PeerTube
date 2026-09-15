@@ -1,3 +1,4 @@
+export * from './email-login.js'
 export * from './user-email-verification.js'
 export * from './user-exports.js'
 export * from './user-history.js'

@@ -6,6 +6,7 @@ import { NSFWPolicyType, VideoSortField } from '@peertube/peertube-models'
 import { from, Subject, Subscription } from 'rxjs'
 import { concatMap, map, switchMap, tap } from 'rxjs/operators'
 import { ActorAvatarComponent } from '../../shared/shared-actor-image/actor-avatar.component'
+import { GlobalIconComponent } from '../../shared/shared-icons/global-icon.component'
 import { InfiniteScrollerDirective } from '../../shared/shared-main/common/infinite-scroller.directive'
 import { SubscribeButtonComponent } from '../../shared/shared-user-subscription/subscribe-button.component'
 import { MiniatureDisplayOptions, VideoMiniatureComponent } from '../../shared/shared-video-miniature/video-miniature.component'
@@ -20,7 +21,7 @@ import { VideoService } from '@app/shared/shared-main/video/video.service'
   selector: 'my-account-video-channels',
   templateUrl: './account-video-channels.component.html',
   styleUrls: [ './account-video-channels.component.scss' ],
-  imports: [ InfiniteScrollerDirective, ActorAvatarComponent, RouterLink, SubscribeButtonComponent, VideoMiniatureComponent ]
+  imports: [ InfiniteScrollerDirective, ActorAvatarComponent, RouterLink, SubscribeButtonComponent, VideoMiniatureComponent, GlobalIconComponent ]
 })
 export class AccountVideoChannelsComponent implements OnInit, OnDestroy {
   private accountService = inject(AccountService)

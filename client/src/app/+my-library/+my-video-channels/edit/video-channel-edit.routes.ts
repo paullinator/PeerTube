@@ -1,4 +1,5 @@
 import { Routes } from '@angular/router'
+import { VideoChannelAccessComponent } from './pages/video-channel-access.component'
 import { VideoChannelActivitiesComponent } from './pages/video-channel-activities.component'
 import { VideoChannelEditGeneralComponent } from './pages/video-channel-edit-general.component'
 import { VideoChannelEditEditorsComponent } from './pages/video-channel-editors.component'
@@ -24,6 +25,15 @@ export const videoChannelEditRoutes: Routes = [
     data: {
       meta: {
         title: $localize`Channel editors`
+      }
+    }
+  },
+  {
+    path: 'access',
+    component: VideoChannelAccessComponent,
+    data: {
+      meta: {
+        title: $localize`Channel access`
       }
     }
   },

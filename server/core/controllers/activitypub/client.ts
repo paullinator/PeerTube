@@ -16,6 +16,7 @@ import { audiencify, getCommentAudience, getPlaylistAudience, getPublicAudience,
 import { buildAnnounceWithVideoAudience, buildApprovalActivity, buildLikeActivity } from '../../lib/activitypub/send/index.js'
 import { buildCreateActivity } from '../../lib/activitypub/send/send-create.js'
 import { buildDislikeActivity } from '../../lib/activitypub/send/send-dislike.js'
+import { isPrivacyForFederation } from '../../lib/activitypub/videos/federate.js'
 import {
   getLocalVideoChaptersActivityPubUrl,
   getLocalVideoCommentsActivityPubUrl,
@@ -335,6 +336,12 @@ async function videoController (req: express.Request, res: express.Response) {
   const video = res.locals.videoFull
 
   if (redirectIfNotOwned(video.url, res)) return
+
+  // Non-federatable privacies (e.g. CHANNEL, private/internal/password) have no public AP
+  // representation: getVideoAudience would throw, so reject the fetch with a 404.
+  if (!isPrivacyForFederation(video.privacy)) {
+    return res.sendStatus(HttpStatusCode.NOT_FOUND_404)
+  }
 
   // We need captions to render AP object
   const videoAP = await video.lightAPToFullAP(undefined)

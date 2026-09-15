@@ -1,4 +1,5 @@
 import { Routes } from '@angular/router'
+import { VideoChannelInviteLandingComponent } from './video-channel-invite-landing.component'
 import { VideoChannelPlaylistsComponent } from './video-channel-playlists/video-channel-playlists.component'
 import { VideoChannelVideosComponent } from './video-channel-videos/video-channel-videos.component'
 import { VideoChannelsComponent } from './video-channels.component'
@@ -9,6 +10,10 @@ import { VideoBlockService } from '@app/shared/shared-moderation/video-block.ser
 import { UserSubscriptionService } from '@app/shared/shared-user-subscription/user-subscription.service'
 
 export default [
+  {
+    path: 'invite/:code',
+    component: VideoChannelInviteLandingComponent
+  },
   {
     path: ':videoChannelName',
     component: VideoChannelsComponent,

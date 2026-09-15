@@ -58,6 +58,10 @@ export const ServerErrorCode = {
   VIDEO_REQUIRES_PASSWORD: 'video_requires_password',
   INCORRECT_VIDEO_PASSWORD: 'incorrect_video_password',
 
+  CHANNEL_REQUIRES_PASSWORD: 'channel_requires_password',
+  INCORRECT_CHANNEL_PASSWORD: 'incorrect_channel_password',
+  CHANNEL_ACCESS_DENIED: 'channel_access_denied',
+
   VIDEO_ALREADY_BEING_TRANSCODED: 'video_already_being_transcoded',
   VIDEO_ALREADY_BEING_TRANSCRIBED: 'video_already_being_transcribed',
   VIDEO_ALREADY_HAS_CAPTIONS: 'video_already_has_captions',

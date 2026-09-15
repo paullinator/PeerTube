@@ -1,5 +1,6 @@
 import { Account, ActorImage } from '../../actors/index.js'
 import { Actor } from '../../actors/actor.model.js'
+import { VideoChannelAccessModeType } from './video-channel-access.model.js'
 
 export type ViewsPerDate = {
   date: Date
@@ -21,6 +22,11 @@ export interface VideoChannel extends Actor {
   totalViews?: number
 
   banners: ActorImage[]
+
+  // Per-channel access control (undefined/PUBLIC for older servers and remote channels)
+  accessMode?: VideoChannelAccessModeType
+  requiresPassword?: boolean
+  viewerHasAccess?: boolean
 }
 
 export interface VideoChannelSummary {

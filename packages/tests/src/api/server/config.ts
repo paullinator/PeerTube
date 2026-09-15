@@ -252,6 +252,7 @@ function buildNewCustomConfig (server: PeerTubeServer): CustomConfig {
       limit: 5,
       requiresApproval: false,
       requiresEmailVerification: false,
+      emailOnly: false,
       minimumAge: 10
     },
     admin: {

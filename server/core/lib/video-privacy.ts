@@ -11,7 +11,10 @@ const lTags = loggerTagsFactory('video-privacy')
 const validPrivacySet = new Set<VideoPrivacyType>([
   VideoPrivacy.PRIVATE,
   VideoPrivacy.INTERNAL,
-  VideoPrivacy.PASSWORD_PROTECTED
+  VideoPrivacy.PASSWORD_PROTECTED,
+  // Channel-based privacy always uses private storage; the channel access gate
+  // (not the privacy itself) decides who can mint a token / play the files.
+  VideoPrivacy.CHANNEL
 ])
 
 export function setVideoPrivacy (video: MVideo, newPrivacy: VideoPrivacyType) {
@@ -28,6 +31,18 @@ export function isVideoInPrivateDirectory (privacy: VideoPrivacyType) {
 
 export function isVideoInPublicDirectory (privacy: VideoPrivacyType) {
   return !isVideoInPrivateDirectory(privacy)
+}
+
+// Privacies whose metadata must stay hidden from discovery (SEO/embed/indexation).
+// Distinct from private *storage*: CHANNEL is stored privately but stays discoverable like PUBLIC.
+const hiddenFromDiscoverySet = new Set<VideoPrivacyType>([
+  VideoPrivacy.PRIVATE,
+  VideoPrivacy.INTERNAL,
+  VideoPrivacy.PASSWORD_PROTECTED
+])
+
+export function isVideoHiddenFromDiscovery (privacy: VideoPrivacyType) {
+  return hiddenFromDiscoverySet.has(privacy)
 }
 
 export async function moveFilesIfPrivacyChanged (video: MVideoFull, oldPrivacy: VideoPrivacyType) {

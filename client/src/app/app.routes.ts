@@ -54,6 +54,14 @@ const routes: Routes = [
     canActivateChild: [ MetaGuard ]
   },
 
+  // Short channel invite links: tube.example.com/i/<code>
+  {
+    path: 'i/:code',
+    loadComponent: () => import('./+video-channels/video-channel-invite-landing.component')
+      .then(m => m.VideoChannelInviteLandingComponent),
+    canActivateChild: [ MetaGuard ]
+  },
+
   {
     path: 'manage/create',
     redirectTo: '/my-library/video-channels/create',

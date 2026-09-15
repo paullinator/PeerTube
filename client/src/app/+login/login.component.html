@@ -97,6 +97,11 @@
                 I forgot my password
               </button>
 
+              @if (emailOnlyEnabled) {
+                <span class="lh-1">·</span>
+                <a i18n routerLink="/login/email" class="link-primary mx-3">Log in with email</a>
+              }
+
               @if (signupAllowed) {
                 <span class="lh-1">·</span>
                 <a i18n routerLink="/signup" class="link-primary mx-3">Create an account</a>

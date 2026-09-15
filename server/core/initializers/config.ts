@@ -584,6 +584,9 @@ const CONFIG = {
     get REQUIRES_EMAIL_VERIFICATION () {
       return config.get<boolean>('signup.requires_email_verification')
     },
+    get EMAIL_ONLY () {
+      return config.get<boolean>('signup.email_only')
+    },
     get MINIMUM_AGE () {
       return config.get<number>('signup.minimum_age')
     },
@@ -597,6 +600,11 @@ const CONFIG = {
           return config.get<string[]>('signup.filters.cidr.blacklist')
         }
       }
+    }
+  },
+  AUTH: {
+    get EXTERNAL_AUTH_EMAIL_LINKING () {
+      return config.get<boolean>('auth.external_auth_email_linking')
     }
   },
   USER: {

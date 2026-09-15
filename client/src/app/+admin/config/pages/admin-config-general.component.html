@@ -204,6 +204,22 @@
                 ></my-peertube-checkbox>
               </div>
 
+              <div class="form-group">
+                <my-peertube-checkbox
+                  [ngClass]="getDisabledSignupClass()"
+                  inputName="signupEmailOnly"
+                  formControlName="emailOnly"
+                  i18n-labelText
+                  labelText="Simplified email-only signup"
+                >
+                  <ng-container ngProjectAs="description" i18n>
+                    Replaces the multi-step registration with a single email field. Users get a magic link / one-time
+                    code by email, are logged in automatically, and can optionally set a password later.
+                    Requires a working SMTP configuration. Overrides "requires approval" when enabled.
+                  </ng-container>
+                </my-peertube-checkbox>
+              </div>
+
               <div [ngClass]="getDisabledSignupClass()">
                 <label i18n for="signupLimit">Signup limit</label>
                 <span i18n class="small muted ms-1">When the total number of users in your platform reaches this limit, registrations are disabled. -1 = unlimited</span>

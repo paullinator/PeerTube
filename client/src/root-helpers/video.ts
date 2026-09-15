@@ -50,7 +50,12 @@ export function videoRequiresUserAuth (video: Video, videoPassword?: string) {
 }
 
 export function videoRequiresFileToken (video: Video) {
-  return new Set<VideoPrivacyType>([ VideoPrivacy.PRIVATE, VideoPrivacy.INTERNAL, VideoPrivacy.PASSWORD_PROTECTED ]).has(video.privacy.id)
+  return new Set<VideoPrivacyType>([
+    VideoPrivacy.PRIVATE,
+    VideoPrivacy.INTERNAL,
+    VideoPrivacy.PASSWORD_PROTECTED,
+    VideoPrivacy.CHANNEL
+  ]).has(video.privacy.id)
 }
 
 export function isVideoNSFWWarnedForUser (video: Video, config: HTMLServerConfig, user: User) {
