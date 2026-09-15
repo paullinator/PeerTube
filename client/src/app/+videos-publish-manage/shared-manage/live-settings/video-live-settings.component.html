@@ -27,6 +27,19 @@
 
     <div class="form-columns reverse" [ngClass]="{ disabled: isStreaming() }">
       <div>
+        @if (getRTMPUrlWithKey()) {
+          <div class="form-group pb-4 mb-4 border-bottom">
+            <label for="liveVideoRTMPUrlWithKey" i18n>Live RTMP Url plus key</label>
+            <my-input-text
+              inputId="liveVideoRTMPUrlWithKey"
+              [value]="getRTMPUrlWithKey()"
+              [withCopy]="true"
+              [show]="true"
+              [readonly]="true"
+            ></my-input-text>
+          </div>
+        }
+
         @if (getLive().rtmpUrl) {
           <div class="form-group">
             <label for="liveVideoRTMPUrl" i18n>Live RTMP Url</label>

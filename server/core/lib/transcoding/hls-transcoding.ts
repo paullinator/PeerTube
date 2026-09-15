@@ -26,6 +26,7 @@ export async function generateHlsPlaylistResolutionFromTS (options: {
   resolution: number
   fps: number
   isAAC: boolean
+  isHEVC?: boolean
   inputFileMutexReleaser: MutexInterface.Releaser
   preventInputFileLocking?: boolean
 }) {
@@ -34,7 +35,7 @@ export async function generateHlsPlaylistResolutionFromTS (options: {
 
     videoInputPath: options.concatenatedTsFilePath,
 
-    ...pick(options, [ 'video', 'resolution', 'fps', 'inputFileMutexReleaser', 'preventInputFileLocking', 'isAAC' ])
+    ...pick(options, [ 'video', 'resolution', 'fps', 'inputFileMutexReleaser', 'preventInputFileLocking', 'isAAC', 'isHEVC' ])
   })
 }
 
@@ -160,6 +161,7 @@ async function generateHlsPlaylistCommon (options: {
   separatedAudio?: boolean
 
   isAAC?: boolean
+  isHEVC?: boolean
 
   job?: Job
 }) {
@@ -172,6 +174,7 @@ async function generateHlsPlaylistCommon (options: {
     fps,
     separatedAudio,
     isAAC,
+    isHEVC,
     job,
     inputFileMutexReleaser,
     preventInputFileLocking
@@ -204,6 +207,7 @@ async function generateHlsPlaylistCommon (options: {
     separatedAudio,
 
     isAAC,
+    isHEVC,
 
     inputFileMutexReleaser,
 

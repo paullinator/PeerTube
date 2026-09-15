@@ -358,6 +358,7 @@ async function assignReplayFilesToVideo (options: {
     const { audioStream } = await getAudioStream(concatenatedTsFilePath, probe)
     const { resolution } = await getVideoStreamDimensionsInfo(concatenatedTsFilePath, probe)
     const fps = await getVideoStreamFPS(concatenatedTsFilePath, probe)
+    const isHEVC = probe.streams.some(s => s.codec_type === 'video' && s.codec_name === 'hevc')
 
     try {
       await generateHlsPlaylistResolutionFromTS({
@@ -367,10 +368,11 @@ async function assignReplayFilesToVideo (options: {
         concatenatedTsFilePath,
         resolution,
         fps,
-        isAAC: audioStream?.codec_name === 'aac'
+        isAAC: audioStream?.codec_name === 'aac',
+        isHEVC
       })
     } catch (err) {
-      logger.error('Cannot generate HLS playlist resolution from TS files.', { err })
+      logger.error('Cannot generate HLS playlist resolution from TS files.', { err, concatenatedTsFile, isHEVC, ...lTags(video.uuid) })
     }
   }
 

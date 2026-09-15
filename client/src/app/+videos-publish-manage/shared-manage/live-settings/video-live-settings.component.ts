@@ -243,6 +243,13 @@ export class VideoLiveSettingsComponent implements OnInit, OnDestroy {
     return this.videoEdit.getVideoAttributes().live
   }
 
+  getRTMPUrlWithKey () {
+    const { rtmpUrl, streamKey } = this.getLive()
+    if (!rtmpUrl || !streamKey) return undefined
+
+    return rtmpUrl + '/' + streamKey
+  }
+
   getVideoName () {
     return this.videoEdit.getVideoAttributes().name
   }

@@ -40,6 +40,7 @@ export interface HLSFromTSTranscodeOptions extends BaseTranscodeVODOptions {
   type: 'hls-from-ts'
 
   isAAC: boolean
+  isHEVC?: boolean
 
   hlsPlaylist: {
     videoFilename: string
@@ -232,6 +233,11 @@ export class FFmpegVOD {
       // Required for example when copying an AAC stream from an MPEG-TS
       // Since it's a bitstream filter, we don't need to reencode the audio
       command.outputOption('-bsf:a aac_adtstoasc')
+    }
+
+    if (options.isHEVC) {
+      // ffmpeg tags HEVC as hev1 in mp4 by default, which Apple players refuse
+      command.outputOption('-tag:v hvc1')
     }
 
     this.addCommonHLSVODCommandOptions(command, videoPath)

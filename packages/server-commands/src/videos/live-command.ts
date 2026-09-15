@@ -184,12 +184,13 @@ export class LiveCommand extends AbstractCommand {
       videoId: number | string
       fixtureName?: string
       copyCodecs?: boolean
+      videoCodec?: 'h264' | 'hevc'
     }
   ) {
-    const { videoId, fixtureName, copyCodecs } = options
+    const { videoId, fixtureName, copyCodecs, videoCodec } = options
     const videoLive = await this.get({ videoId })
 
-    return sendRTMPStream({ rtmpBaseUrl: videoLive.rtmpUrl, streamKey: videoLive.streamKey, fixtureName, copyCodecs })
+    return sendRTMPStream({ rtmpBaseUrl: videoLive.rtmpUrl, streamKey: videoLive.streamKey, fixtureName, copyCodecs, videoCodec })
   }
 
   async runAndTestStreamError (

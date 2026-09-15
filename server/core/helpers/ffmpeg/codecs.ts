@@ -10,7 +10,7 @@ export async function getVideoStreamCodec (path: string, existingProbe?: Ffprobe
   const videoCodec = videoStream.codec_tag_string
 
   if (videoCodec === 'vp09') return 'vp09.00.50.08'
-  if (videoCodec === 'hev1') return 'hev1.1.6.L93.B0'
+  if (videoStream.codec_name === 'hevc') return getHEVCCodec(videoStream)
 
   const baseProfileMatrix = {
     avc1: {
@@ -44,6 +44,34 @@ export async function getVideoStreamCodec (path: string, existingProbe?: Ffprobe
 
   // Default, h264 codec
   return `${videoCodec}.${baseProfile}${level}`
+}
+
+// RFC 6381 / ISO 14496-15 codec string, assuming Main tier and no constraint flags
+function getHEVCCodec (videoStream: { codec_tag_string?: string, profile?: string | number, level?: string | number }) {
+  // Players need hvc1 unless the file really stores parameter sets in-band (hev1)
+  const tag = videoStream.codec_tag_string === 'hev1'
+    ? 'hev1'
+    : 'hvc1'
+
+  // Profile idc and its compatibility flags (hex): Main 1/6, Main 10 2/4, Main Still Picture 3/8
+  const profiles: Record<string, string> = {
+    'Main': '1.6',
+    'Main 10': '2.4',
+    'Main Still Picture': '3.8'
+  }
+
+  let profile = profiles[videoStream.profile + '']
+  if (!profile) {
+    logger.warn('Cannot get HEVC profile codec, fallback to Main.', { videoStream })
+    profile = profiles['Main']
+  }
+
+  // ffprobe reports general_level_idc, which is 30 times the level number (4.1 -> 123)
+  const level = forceNumber(videoStream.level) > 0
+    ? forceNumber(videoStream.level)
+    : 123
+
+  return `${tag}.${profile}.L${level}.B0`
 }
 
 export async function getAudioStreamCodec (path: string, existingProbe?: FfprobeData) {
