@@ -13,7 +13,21 @@ import { getLiveDirectory, getLiveReplayBaseDirectory } from '../paths.js'
 export function buildConcatenatedName (segmentOrPlaylistPath: string) {
   const num = basename(segmentOrPlaylistPath).match(/^(\d+)(-|\.)/)
 
-  return 'concat-' + num[1] + '.ts'
+  // Fragmented MP4 segments are concatenated after their init segment into an MP4 file
+  const extension = segmentOrPlaylistPath.endsWith('.m4s')
+    ? '.mp4'
+    : '.ts'
+
+  return 'concat-' + num[1] + extension
+}
+
+export function isLiveSegmentFile (path: string) {
+  return path.endsWith('.ts') || path.endsWith('.m4s')
+}
+
+// Init segment ffmpeg writes for a fragmented MP4 live playlist
+export function getLiveInitSegmentName (playlistNumber: string) {
+  return playlistNumber + '-init.mp4'
 }
 
 export async function cleanupAndDestroyPermanentLive (video: MVideo, streamingPlaylist: MStreamingPlaylist) {
@@ -87,7 +101,8 @@ function isTMPLiveFile (name: string) {
     name.endsWith('.json') ||
     name.endsWith('.mpd') ||
     name.endsWith('.m4s') ||
-    name.endsWith('.tmp')
+    name.endsWith('.tmp') ||
+    /^\d+-init\.mp4$/.test(basename(name))
 }
 
 async function cleanupTMPLiveFilesFromFilesystem (video: MVideo) {

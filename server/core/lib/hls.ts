@@ -320,7 +320,7 @@ export async function renameVideoFileInPlaylist (playlistPath: string, newVideoF
 // ---------------------------------------------------------------------------
 
 export function injectQueryToPlaylistUrls (content: string, queryString: string) {
-  return content.replace(/\.(m3u8|ts|mp4)/gm, '.$1?' + queryString)
+  return content.replace(/\.(m3u8|ts|mp4|m4s)/gm, '.$1?' + queryString)
 }
 
 // ---------------------------------------------------------------------------

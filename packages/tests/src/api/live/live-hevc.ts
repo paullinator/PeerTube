@@ -18,6 +18,8 @@ import {
 import { testLiveVideoResolutions } from '@tests/shared/live.js'
 import { SQLCommand } from '@tests/shared/sql-command.js'
 import { expect } from 'chai'
+import { readFile } from 'fs/promises'
+import { join } from 'path'
 
 describe('Test HEVC live', function () {
   let servers: PeerTubeServer[] = []
@@ -122,7 +124,17 @@ describe('Test HEVC live', function () {
       const videoStream = probe.streams.find(s => s.codec_type === 'video')
 
       expect(videoStream.codec_name).to.equal('hevc')
+      expect(videoStream.codec_tag_string).to.equal('hvc1')
       expect(videoStream.height).to.equal(720)
+
+      // Apple players need HEVC in fragmented MP4 segments, behind an hvc1 init segment without an empty sdtp box
+      const subPlaylist = await servers[0].streamingPlaylists.get({ url: video.streamingPlaylists[0].playlistUrl.replace(/[^/]+$/, '0.m3u8') })
+      expect(subPlaylist).to.contain('#EXT-X-MAP:URI="0-init.mp4"')
+      expect(subPlaylist).to.match(/^0-\d+\.m4s$/m)
+
+      const initSegment = await readFile(servers[0].servers.buildDirectory(join('streaming-playlists', 'hls', liveVideoId, '0-init.mp4')))
+      expect(initSegment.includes(Buffer.from('hvc1', 'latin1'))).to.be.true
+      expect(initSegment.includes(Buffer.from('\0\0\0\x0csdtp', 'latin1'))).to.be.false
 
       await stopFfmpeg(ffmpegCommand)
     })

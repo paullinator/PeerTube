@@ -44,6 +44,7 @@ describe('Test Live transcoding in peertube-runner program', function () {
       await waitJobs(servers)
 
       await testLiveVideoResolutions({
+        segmentExtension: '.ts',
         originServer: servers[0],
         sqlCommand: sqlCommandServer1,
         servers,
@@ -102,6 +103,7 @@ describe('Test Live transcoding in peertube-runner program', function () {
       await waitJobs(servers)
 
       await testLiveVideoResolutions({
+        segmentExtension: '.ts',
         originServer: servers[0],
         sqlCommand: sqlCommandServer1,
         servers,
@@ -159,6 +161,7 @@ describe('Test Live transcoding in peertube-runner program', function () {
       await waitUntilLivePublishedOnAllServers(servers, video.uuid)
 
       await testLiveVideoResolutions({
+        segmentExtension: '.ts',
         originServer: servers[0],
         sqlCommand: sqlCommandServer1,
         servers,
