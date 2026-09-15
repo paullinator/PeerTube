@@ -1,0 +1,84 @@
+diff --git a/src/node_rtmp_session.js b/src/node_rtmp_session.js
+index 74cb068615cebb5854a111439ac5fde7e3ef944b..16f9b1e7ca2d5ff604bfc19f271a26a23b48609e 100644
+--- a/src/node_rtmp_session.js
++++ b/src/node_rtmp_session.js
+@@ -726,6 +726,9 @@ class NodeRtmpSession {
+     let frame_type = payload[0] >> 4 & 0b0111;
+     let codec_id = payload[0] & 0x0f;
+     let packetType = payload[0] & 0x0f;
++    // PeerTube: Enhanced RTMP HEVC is relayed unchanged instead of being rewritten to the
++    // legacy codec id 12, which FFmpeg only demuxes from 8.0 (Enhanced RTMP works from 6.1)
++    let isEnhancedHEVC = false;
+     if (isExHeader) {
+       if (packetType == PacketTypeMetadata) {
+ 
+@@ -736,22 +739,10 @@ class NodeRtmpSession {
+       let FourCC = payload.subarray(1, 5);
+       if (FourCC.compare(FourCC_HEVC) == 0) {
+         codec_id = 12;
+-        if (packetType == PacketTypeSequenceStart) {
+-          payload[0] = 0x1c;
+-          payload[1] = 0;
+-          payload[2] = 0;
+-          payload[3] = 0;
+-          payload[4] = 0;
+-        } else if (packetType == PacketTypeCodedFrames || packetType == PacketTypeCodedFramesX) {
+-          if (packetType == PacketTypeCodedFrames) {
+-            payload = payload.subarray(3);
+-          } else {
+-            payload[2] = 0;
+-            payload[3] = 0;
+-            payload[4] = 0;
+-          }
+-          payload[0] = frame_type << 4 | 0x0c;
+-          payload[1] = 1;
++        isEnhancedHEVC = true;
++        if (packetType != PacketTypeSequenceStart && packetType != PacketTypeCodedFrames && packetType != PacketTypeCodedFramesX) {
++          // Metadata and SequenceEnd carry nothing FFmpeg needs, and FFmpeg 6.1 misreads Metadata as a frame
++          return;
+         }
+       } else if (FourCC.compare(FourCC_AV1) == 0) {
+         codec_id = 13;
+@@ -786,16 +777,27 @@ class NodeRtmpSession {
+       }
+     }
+ 
++    let isSequenceHeader = isEnhancedHEVC
++      ? packetType == PacketTypeSequenceStart
++      : payload[1] == 0;
++
+     if (codec_id == 7 || codec_id == 12 || codec_id == 13) {
+       //cache avc sequence header
+-      if (frame_type == 1 && payload[1] == 0) {
++      if (isSequenceHeader && (frame_type == 1 || isEnhancedHEVC)) {
+         this.avcSequenceHeader = Buffer.alloc(payload.length);
+         payload.copy(this.avcSequenceHeader);
+-        let info = AV.readAVCSpecificConfig(this.avcSequenceHeader);
+-        this.videoWidth = info.width;
+-        this.videoHeight = info.height;
+-        this.videoProfileName = AV.getAVCProfileName(info);
+-        this.videoLevel = info.level;
++        // The parser expects a legacy header; the Enhanced RTMP config record sits at the same offset
++        let legacyHeader = Buffer.from(this.avcSequenceHeader);
++        if (isEnhancedHEVC) legacyHeader[0] = 0x1c;
++        try {
++          let info = AV.readAVCSpecificConfig(legacyHeader);
++          this.videoWidth = info.width;
++          this.videoHeight = info.height;
++          this.videoProfileName = AV.getAVCProfileName(info);
++          this.videoLevel = info.level;
++        } catch (e) {
++          Logger.error(`[rtmp publish] Cannot parse video sequence header. id=${this.id} codec_id=${codec_id}`, e);
++        }
+         //Logger.log(`[rtmp publish] avc sequence header`,this.avcSequenceHeader);
+       }
+     }
+@@ -825,7 +827,7 @@ class NodeRtmpSession {
+         this.rtmpGopCacheQueue.clear();
+         this.flvGopCacheQueue.clear();
+       }
+-      if ((codec_id == 7 || codec_id == 12 || codec_id == 13) && frame_type == 1 && payload[1] == 0) {
++      if ((codec_id == 7 || codec_id == 12 || codec_id == 13) && isSequenceHeader) {
+         //skip avc sequence header
+       } else {
+         this.rtmpGopCacheQueue.add(rtmpChunks);

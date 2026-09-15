@@ -12,6 +12,9 @@ patchedDependencies:
   '@types/markdown-it':
     hash: b68247cf64808c60a86b4f1ee56430de5e1b3d0fb2023e0c82242537f4f27937
     path: pnpm-patches/@types__markdown-it.patch
+  node-media-server:
+    hash: ee3586117a6235a7901ca2a26633c6732d5ed041d57fd173aba76b3bb37bfa5b
+    path: pnpm-patches/node-media-server.patch
   sharp:
     hash: 6360e5a7ee3bb2fcc71d0f3c8a8532b01555e32108f8ec2eedcbfaba4ea25704
     path: pnpm-patches/sharp.patch
@@ -280,7 +283,7 @@ importers:
         version: 7.1.0
       node-media-server:
         specifier: ^2.7.4
-        version: 2.7.4(bufferutil@4.1.0)(utf-8-validate@6.0.6)
+        version: 2.7.4(patch_hash=ee3586117a6235a7901ca2a26633c6732d5ed041d57fd173aba76b3bb37bfa5b)(bufferutil@4.1.0)(utf-8-validate@6.0.6)
       nodemailer:
         specifier: ^8.0.9
         version: 8.0.9
@@ -20822,7 +20825,7 @@ snapshots:
 
   node-int64@0.4.0: {}
 
-  node-media-server@2.7.4(bufferutil@4.1.0)(utf-8-validate@6.0.6):
+  node-media-server@2.7.4(patch_hash=ee3586117a6235a7901ca2a26633c6732d5ed041d57fd173aba76b3bb37bfa5b)(bufferutil@4.1.0)(utf-8-validate@6.0.6):
     dependencies:
       basic-auth-connect: 1.1.0
       chalk: 4.1.2

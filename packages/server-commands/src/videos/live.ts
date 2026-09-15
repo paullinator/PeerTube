@@ -10,8 +10,9 @@ export function sendRTMPStream (options: {
   streamKey: string
   fixtureName?: string // default video_short.mp4
   copyCodecs?: boolean // default false
+  videoCodec?: 'h264' | 'hevc' // default h264, ignored with copyCodecs
 }) {
-  const { rtmpBaseUrl, streamKey, fixtureName = 'video_short.mp4', copyCodecs = false } = options
+  const { rtmpBaseUrl, streamKey, fixtureName = 'video_short.mp4', copyCodecs = false, videoCodec = 'h264' } = options
 
   const fixture = buildAbsoluteFixturePath(fixtureName)
 
@@ -21,6 +22,12 @@ export function sendRTMPStream (options: {
 
   if (copyCodecs) {
     command.outputOption('-c copy')
+  } else if (videoCodec === 'hevc') {
+    // ffmpeg >= 6.1 sends HEVC as Enhanced RTMP (hvc1 FourCC)
+    command.outputOption('-c:v libx265')
+    command.outputOption('-preset ultrafast')
+    command.outputOption('-x265-params "keyint=120:min-keyint=120:scenecut=0:log-level=error"')
+    command.outputOption('-r 60')
   } else {
     command.outputOption('-c:v libx264')
     command.outputOption('-g 120')
