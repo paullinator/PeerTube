@@ -1,0 +1,70 @@
+<h2 class="form-title">
+  <my-global-icon iconName="film"></my-global-icon>
+
+  <ng-container i18n>Stored files</ng-container>
+</h2>
+
+<div class="form-group-description mb-3" i18n>
+  Every copy of this video stored on {{ instanceName }}: the original upload, if it is kept, and the files served to viewers.
+</div>
+
+@if (!loaded) {
+  <div class="muted" i18n>Loading…</div>
+} @else {
+  @if (files.length === 0) {
+    <my-alert type="primary" i18n>No stored file.</my-alert>
+  } @else {
+    <div class="table-container">
+      <table class="stored-files">
+        <thead>
+          <tr>
+            <th i18n>Type</th>
+            <th i18n>Resolution</th>
+            <th i18n>FPS</th>
+            <th i18n>Video codec</th>
+            <th i18n>Audio codec</th>
+            <th i18n>Bitrate</th>
+            <th i18n>Size</th>
+            <th i18n>Storage</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          @for (file of files; track file.kind + file.filename) {
+            <tr [class.original]="file.kind === 'original'">
+              <td>{{ getKindLabel(file) }}</td>
+              <td>{{ file.resolution.label }} <span class="muted">{{ file.width }}×{{ file.height }}</span></td>
+              <td>{{ file.fps }}</td>
+              <td>{{ file.videoCodec || '-' }}</td>
+              <td>{{ file.audioCodec || '-' }}</td>
+              <td>{{ formatBitrate(file.bitrate) }}</td>
+              <td>{{ file.size | bytes: 1 }}</td>
+              <td>{{ getStorageLabel(file) }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+
+  <div class="copy-original">
+    <h3 i18n>Serve the original without re-encoding</h3>
+
+    @if (hasOriginal()) {
+      <div class="form-group-description mb-3" i18n>
+        Copy the original file into HLS as is, at its own resolution and frame rate.
+        The other HLS resolutions and web video files are deleted, so the copy becomes the only file served.
+      </div>
+
+      <button type="button" class="peertube-button primary-button" [disabled]="copying" (click)="copyOriginalToHLS()">
+        @if (copying) {
+          <ng-container i18n>Copying…</ng-container>
+        } @else {
+          <ng-container i18n>Rebuild HLS from original (copy, no re-encode)</ng-container>
+        }
+      </button>
+    } @else {
+      <my-alert type="primary" i18n>The original file of this video is not kept on {{ instanceName }}, so it cannot be copied.</my-alert>
+    }
+  </div>
+}

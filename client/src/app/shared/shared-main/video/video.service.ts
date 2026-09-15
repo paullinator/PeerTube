@@ -31,6 +31,7 @@ import {
   VideoDetails as VideoDetailsServerModel,
   VideoFile,
   VideoFileMetadata,
+  VideoHLSCopyFromSource,
   VideoLicence,
   VideoLicenceType,
   VideoPrivacy,
@@ -39,6 +40,7 @@ import {
   Video as VideoServerModel,
   VideoSortField,
   VideoSource,
+  VideoStoredFile,
   VideoTranscodingCreate,
   VideoUpdate
 } from '@peertube/peertube-models'
@@ -484,6 +486,51 @@ export class VideoService {
   }
 
   // ---------------------------------------------------------------------------
+
+  getStoredFiles (videoId: number | string) {
+    return this.authHttp
+      .get<VideoStoredFile[]>(VideoService.BASE_VIDEO_URL + '/' + videoId + '/stored-files')
+      .pipe(catchError(err => this.restExtractor.handleError(err)))
+  }
+
+  createHLSCopyFromSource (options: {
+    video: { uuid: string, name: string }
+    force?: boolean
+  }): Observable<any> {
+    return this.postHLSCopyFromSource(options)
+      .pipe(catchError(err => this.restExtractor.handleError(err)))
+  }
+
+  private postHLSCopyFromSource (options: {
+    video: { uuid: string, name: string }
+    force?: boolean
+  }): Observable<any> {
+    const { video, force } = options
+
+    const body: VideoHLSCopyFromSource = { force }
+
+    return this.authHttp.post(VideoService.BASE_VIDEO_URL + '/' + video.uuid + '/source/hls-copy', body)
+      .pipe(
+        catchError(err => {
+          if (err.error?.code === ServerErrorCode.VIDEO_ALREADY_BEING_TRANSCODED && !force) {
+            const message = $localize`PeerTube considers video "${video.name}" is already being transcoded.` +
+              $localize` If you think PeerTube is wrong (video in broken state after a crash etc.), you can force the copy.` +
+              $localize` Do you still want to copy the original file into HLS?`
+
+            return from(this.confirmService.confirm(message, $localize`Force copy`))
+              .pipe(
+                switchMap(res => {
+                  if (res === false) return throwError(() => err)
+
+                  return this.postHLSCopyFromSource({ video, force: true })
+                })
+              )
+          }
+
+          return throwError(() => err)
+        })
+      )
+  }
 
   getSource (videoId: number) {
     return this.authHttp
